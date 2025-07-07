@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Post, TargetChannel } from '../types';
 import {
   PostsHeader,
@@ -14,8 +14,9 @@ import {
   EditDialog,
   ApproveDialog,
   ScheduleDialog,
+  Pagination
 } from '../components/posts';
-import { useFilteredPostsAPI, usePostsStats, filterPostsByStatus, PostFilters } from '../hooks/useFilteredPostsAPI';
+import { useFilteredPostsAPI, usePostsStats, usePostsCount, filterPostsByStatus, PostFilters } from '../hooks/useFilteredPostsAPI';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { useTargetChannels } from '../hooks/useTargetChannels';
 import { useSourceChannels } from '../hooks/useSourceChannels';
@@ -46,33 +47,101 @@ export function Posts(): JSX.Element {
   const [selectedTab, setSelectedTab] = useState(0);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<FilterParams>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20); // Posts per page
   const [dialogs, setDialogs] = useState<DialogState>({
     view: null,
     edit: null,
     approve: null,
-    schedule: null,
+    schedule: null
   });
+
+  // Helper function to get status from tab
+  const getStatusFromTab = (tabIndex: number): StatusFilter => {
+    return STATUS_FILTERS[tabIndex];
+  };
 
   // Computed values
   const currentStatus = STATUS_FILTERS[selectedTab];
-  const apiFilters: PostFilters = {
-    status: currentStatus === 'all' ? undefined : currentStatus,
-    ...advancedFilters,
-  };
+
+  // Build filters for API call
+  const apiFilters: PostFilters = useMemo(() => {
+    const filters: PostFilters = {
+      skip: (currentPage - 1) * pageSize,
+      limit: pageSize,
+    };
+
+    // Add status filter from tab
+    const statusFilter = getStatusFromTab(selectedTab);
+    if (statusFilter !== 'all') {
+      filters.status = statusFilter;
+    }
+
+    // Add advanced filters
+    if (advancedFilters.source_channel_id) {
+      filters.source_channel_id = advancedFilters.source_channel_id;
+    }
+    if (advancedFilters.target_channel_id) {
+      filters.target_channel_id = advancedFilters.target_channel_id;
+    }
+    if (advancedFilters.date_from) {
+      filters.date_from = advancedFilters.date_from;
+    }
+    if (advancedFilters.date_to) {
+      filters.date_to = advancedFilters.date_to;
+    }
+    if (advancedFilters.is_manual !== undefined) {
+      filters.is_manual = advancedFilters.is_manual;
+    }
+
+    return filters;
+  }, [selectedTab, currentPage, pageSize, advancedFilters]);
+
+  // Build count filters (same as apiFilters but without skip/limit)
+  const countFilters = useMemo(() => {
+    const filters: Omit<PostFilters, 'skip' | 'limit'> = {};
+
+    // Add status filter from tab
+    const statusFilter = getStatusFromTab(selectedTab);
+    if (statusFilter !== 'all') {
+      filters.status = statusFilter;
+    }
+
+    // Add advanced filters
+    if (advancedFilters.source_channel_id) {
+      filters.source_channel_id = advancedFilters.source_channel_id;
+    }
+    if (advancedFilters.target_channel_id) {
+      filters.target_channel_id = advancedFilters.target_channel_id;
+    }
+    if (advancedFilters.date_from) {
+      filters.date_from = advancedFilters.date_from;
+    }
+    if (advancedFilters.date_to) {
+      filters.date_to = advancedFilters.date_to;
+    }
+    if (advancedFilters.is_manual !== undefined) {
+      filters.is_manual = advancedFilters.is_manual;
+    }
+
+    return filters;
+  }, [selectedTab, advancedFilters]);
 
   // Hooks
   const { data: posts, error: postsError, isLoading: postsLoading, refetch: refetchPosts } = useFilteredPostsAPI(apiFilters);
+  const { data: totalCount, error: countError, isLoading: countLoading } = usePostsCount(countFilters);
   const { data: targetChannels, error: channelsError, isLoading: channelsLoading } = useTargetChannels();
   const { data: sourceChannels, error: sourceChannelsError, isLoading: sourceChannelsLoading } = useSourceChannels();
   const mutations = usePostMutations();
 
   // Computed values
   const stats = usePostsStats(posts as Post[] | undefined);
-  const filteredPosts = filterPostsByStatus(posts as Post[] | undefined, currentStatus);
+  const totalPages = Math.ceil((totalCount || 0) / pageSize);
 
   // Event handlers
   const handleTabChange = useCallback((tabIndex: number) => {
     setSelectedTab(tabIndex);
+    setCurrentPage(1); // Reset to first page when tab changes
   }, []);
 
   const handleViewPost = useCallback((post: Post) => {
@@ -118,6 +187,7 @@ export function Posts(): JSX.Element {
 
   const handleAdvancedFiltersChange = useCallback((filters: FilterParams) => {
     setAdvancedFilters(filters);
+    setCurrentPage(1); // Reset to first page when filters change
   }, []);
 
   const handleClearAdvancedFilters = useCallback(() => {
@@ -133,7 +203,7 @@ export function Posts(): JSX.Element {
 
 
   // Loading state
-  if (postsLoading || channelsLoading || sourceChannelsLoading) {
+  if (postsLoading || countLoading || channelsLoading || sourceChannelsLoading) {
     return (
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
         <PostsHeader onRefresh={refetchPosts} />
@@ -143,10 +213,10 @@ export function Posts(): JSX.Element {
   }
 
   // Error state
-  if (postsError || channelsError || sourceChannelsError) {
+  if (postsError || countError || channelsError || sourceChannelsError) {
     return (
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <ErrorAlert error={(postsError || channelsError || sourceChannelsError) as Error} />
+        <ErrorAlert error={(postsError || countError || channelsError || sourceChannelsError) as Error} />
       </div>
     );
   }
@@ -156,10 +226,7 @@ export function Posts(): JSX.Element {
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
         <PostsHeader onRefresh={refetchPosts} />
         
-        <div className="animate-in fade-in-50 duration-500">
-          <PostsStats stats={stats} />
-        </div>
-        
+
         <div className="animate-in fade-in-50 duration-700">
           <PostsFilters
             statusFilters={STATUS_FILTERS}
@@ -181,7 +248,7 @@ export function Posts(): JSX.Element {
         </div>
 
         <div className="animate-in fade-in-50 duration-1000">
-          {filteredPosts.length === 0 ? (
+          {!posts || posts.length === 0 ? (
             <EmptyState message={`Нет постов со статусом "${STATUS_LABELS[currentStatus]}"`} />
           ) : (
             <div className="space-y-4 sm:space-y-6">
@@ -191,13 +258,13 @@ export function Posts(): JSX.Element {
                     {STATUS_LABELS[currentStatus]}
                   </h2>
                   <span className="text-xs sm:text-sm text-muted-foreground">
-                    ({filteredPosts.length} {filteredPosts.length === 1 ? 'пост' : 'постов'})
+                    ({totalCount || 0} {(totalCount || 0) === 1 ? 'пост' : 'постов'})
                   </span>
                 </div>
               </div>
               
               <PostsGrid
-                posts={filteredPosts}
+                posts={posts}
                 onView={handleViewPost}
                 onEdit={handleEditPost}
                 onApprove={handleApprovePost}
@@ -206,6 +273,16 @@ export function Posts(): JSX.Element {
                 onSchedule={handleSchedulePost}
                 onImageClick={handleImageClick}
               />
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={pageSize}
+                  totalItems={totalCount || 0}
+                />
+              )}
             </div>
           )}
         </div>

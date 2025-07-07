@@ -396,6 +396,46 @@ async def get_posts(
     )
 
 
+@app.get("/api/posts/count")
+async def get_posts_count(
+    status: Optional[str] = None,
+    source_channel_id: Optional[int] = None,
+    target_channel_id: Optional[int] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    is_manual: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    # Parse date strings to datetime objects
+    parsed_date_from = None
+    parsed_date_to = None
+    
+    if date_from:
+        try:
+            parsed_date_from = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_from format. Use ISO format.")
+    
+    if date_to:
+        try:
+            parsed_date_to = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date_to format. Use ISO format.")
+    
+    count = crud.get_posts_count(
+        db,
+        status=status,
+        source_channel_id=source_channel_id,
+        target_channel_id=target_channel_id,
+        date_from=parsed_date_from,
+        date_to=parsed_date_to,
+        is_manual=is_manual
+    )
+    
+    return {"count": count}
+
+
 @app.get("/api/posts/{post_id}", response_model=Post)
 async def get_post(
     post_id: int,
@@ -1142,7 +1182,7 @@ async def serve_media_file(
     )
 
 
-@app.get("/api/{file_path:path}")
+@app.get("/api/media/{file_path:path}")
 async def serve_media_by_path(
     file_path: str
 ):
@@ -1153,11 +1193,11 @@ async def serve_media_by_path(
     
     # Security: validate path to prevent directory traversal
     import re
-    if not re.match(r'^media/[a-zA-Z0-9._-]+$', file_path):
+    if not re.match(r'^[a-zA-Z0-9._-]+$', file_path):
         raise HTTPException(status_code=400, detail="Invalid file path")
     
     # Construct full path
-    full_path = os.path.join(".", file_path)
+    full_path = os.path.join(".", "media", file_path)
     
     if not os.path.exists(full_path) or not os.path.isfile(full_path):
         raise HTTPException(status_code=404, detail="Media file not found")

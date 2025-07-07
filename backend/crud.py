@@ -191,6 +191,38 @@ def get_posts(
     return query.offset(skip).limit(limit).all()
 
 
+def get_posts_count(
+    db: Session,
+    status: Optional[PostStatus] = None,
+    source_channel_id: Optional[int] = None,
+    target_channel_id: Optional[int] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    is_manual: Optional[bool] = None
+) -> int:
+    query = db.query(func.count(Post.id))
+    
+    if status:
+        query = query.filter(Post.status == status)
+    
+    if source_channel_id is not None:
+        query = query.filter(Post.source_channel_id == source_channel_id)
+    
+    if target_channel_id is not None:
+        query = query.filter(Post.target_channel_id == target_channel_id)
+    
+    if date_from:
+        query = query.filter(Post.created_at >= date_from)
+    
+    if date_to:
+        query = query.filter(Post.created_at <= date_to)
+    
+    if is_manual is not None:
+        query = query.filter(Post.is_manual == is_manual)
+    
+    return query.scalar()
+
+
 def get_post(db: Session, post_id: int) -> Optional[Post]:
     return db.query(Post).filter(Post.id == post_id).first()
 

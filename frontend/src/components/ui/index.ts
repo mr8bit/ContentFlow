@@ -27,3 +27,4 @@ export { Calendar } from "./calendar";
 export { Checkbox } from "./checkbox";
 export { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "./form";
 export { cn } from "./utils";
+export { ScrollArea, ScrollBar } from "./scroll-area";

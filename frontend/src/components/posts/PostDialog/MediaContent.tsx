@@ -19,8 +19,8 @@ export const MediaContent = React.memo<MediaContentProps>(({ media, onMediaClick
     const gridClass = getGridClass(totalCount);
     
     return (
-      <div className="space-y-2 sm:space-y-3">
-        <div className={`grid gap-1 sm:gap-2 ${gridClass} max-w-xs sm:max-w-lg`}>
+      <div className="space-y-3 sm:space-y-4">
+        <div className={`grid gap-2 sm:gap-3 ${gridClass} max-w-sm sm:max-w-2xl rounded-xl overflow-hidden shadow-sm border border-muted/50`}>
           {displayItems.map((item, index) => (
             <MediaItem
               key={index}
@@ -33,17 +33,20 @@ export const MediaContent = React.memo<MediaContentProps>(({ media, onMediaClick
           ))}
         </div>
         {totalCount > 4 && (
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Всего медиафайлов: {totalCount}
-          </p>
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 rounded-lg">
+            <div className="w-2 h-2 bg-primary rounded-full"></div>
+            <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+              Всего медиафайлов: {totalCount}
+            </p>
+          </div>
         )}
       </div>
     );
   } else if ('file_id' in media && 'file_path' in media) {
     // BackendMedia - new format from API
     return (
-      <div className="space-y-2 sm:space-y-3">
-        <div className="max-w-xs sm:max-w-lg">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="max-w-sm sm:max-w-2xl rounded-xl overflow-hidden shadow-sm border border-muted/50">
           <MediaItem
             item={media}
             index={0}
@@ -57,8 +60,8 @@ export const MediaContent = React.memo<MediaContentProps>(({ media, onMediaClick
   } else {
     // SingleMedia - legacy format
     return (
-      <div className="space-y-2 sm:space-y-3">
-        <div className="max-w-xs sm:max-w-lg">
+      <div className="space-y-3 sm:space-y-4">
+        <div className="max-w-sm sm:max-w-2xl rounded-xl overflow-hidden shadow-sm border border-muted/50">
           <MediaItem
             item={media}
             index={0}

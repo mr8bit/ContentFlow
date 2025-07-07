@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, Button, Badge, Separator, Tabs, TabsList, TabsTrigger, TabsContent } from '../../ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Button, Badge, Separator, Tabs, TabsList, TabsTrigger, TabsContent, ScrollArea } from '../../ui';
 import { Sparkles as SparklesIcon, Copy, ExternalLink, MessageSquare, Info, Edit3, Eye, CheckCircle, Send, Calendar } from 'lucide-react';
 import { PostDialogProps } from './types';
 import { usePostDialog } from './hooks';
@@ -119,191 +119,206 @@ export const PostDialog = React.memo<PostDialogProps>(({ post, onClose }) => {
 
   return (
     <>
-      <Dialog open={!!post} onOpenChange={(open) => {
-        // Предотвращаем закрытие диалога, если открыто модальное окно медиа
-        if (!open && fullscreenMedia) {
-          return;
-        }
-        onClose();
-      }}>
-        <DialogContent className="w-[95vw] max-w-md sm:max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-primary" />
-                <span className="text-lg sm:text-xl">Пост #{post.id}</span>
-                <Badge className={getStatusColor(post.status)}>
-                  {getStatusText(post.status)}
+      <Dialog open={!!post} onOpenChange={onClose}>
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="flex-shrink-0 px-6 py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <DialogTitle className="text-xl font-semibold text-foreground">
+                  Пост #{post?.id}
+                </DialogTitle>
+                <Badge className={`text-xs font-medium ${getStatusColor(post?.status || '')}`}>
+                  {getStatusText(post?.status || '')}
                 </Badge>
               </div>
+
+            </div>
+            
+            {/* Кнопки управления статусом */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 p-3 bg-muted/30 rounded-lg">
+              {/* Кнопка "Одобрить" для статусов pending и processed */}
+              {(post.status === 'pending' || post.status === 'processed') && (
+                <Button
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={approvePostMutation.isLoading}
+                  className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {approvePostMutation.isLoading ? 'Одобряю...' : 'Одобрить'}
+                </Button>
+              )}
               
-              {/* Кнопки управления статусом */}
-              <div className="flex items-center gap-2">
-                {/* Кнопка "Одобрить" для статусов pending и processed */}
-                {(post.status === 'pending' || post.status === 'processed') && (
+              {/* Кнопки для статуса approved */}
+              {post.status === 'approved' && (
+                <>
                   <Button
                     size="sm"
-                    onClick={handleApprove}
-                    disabled={approvePostMutation.isLoading}
-                    className="gap-2"
+                    onClick={() => setShowPublishDialog(true)}
+                    className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    <CheckCircle className="h-4 w-4" />
-                    {approvePostMutation.isLoading ? 'Одобряю...' : 'Одобрить'}
+                    <Send className="h-4 w-4" />
+                    Опубликовать
                   </Button>
-                )}
-                
-                {/* Кнопки для статуса approved */}
-                {post.status === 'approved' && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => setShowPublishDialog(true)}
-                      className="gap-2"
-                    >
-                      <Send className="h-4 w-4" />
-                      Опубликовать
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowScheduleDialog(true)}
-                      className="gap-2"
-                    >
-                      <Calendar className="h-4 w-4" />
-                      Отложенная публикация
-                    </Button>
-                  </>
-                )}
-              </div>
-            </DialogTitle>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowScheduleDialog(true)}
+                    className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950"
+                  >
+                    <Calendar className="h-4 w-4" />
+                    Запланировать
+                  </Button>
+                </>
+              )}
+            </div>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
-              <TabsTrigger value="preview" className="gap-2">
-                <Eye className="h-4 w-4" />
-                Просмотр
-              </TabsTrigger>
-    
-              <TabsTrigger value="info" className="gap-2">
-                <Info className="h-4 w-4" />
-                Информация
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Вкладка просмотра */}
-            <TabsContent value="preview" className="flex-1 overflow-y-auto mt-4">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-                {/* Оригинальный пост */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                      Оригинальный пост
-                    </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleCopyText(post.original_text || '')}
-                      className="gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <TelegramPost 
-                    text={post.original_text || ''} 
-                    type="original" 
-                    post={post} 
-                    onMediaClick={handleMediaClick}
-                  />
-                  
-                  {/* Кнопка открытия в Telegram */}
-                  {getTelegramPostUrl() && (
-                    <div className="flex justify-center pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        className="gap-2"
-                      >
-                        <a
-                          href={getTelegramPostUrl()!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                          Открыть оригинал в Telegram
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Улучшенный пост */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                      Улучшенный пост
-                    </h3>
-                    {(improvedText || post.processed_text) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCopyText(improvedText || post.processed_text || '')}
-                        className="gap-2"
-                      >
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <EditableTextSection
-                    post={post}
-                    text={improvedText || post.processed_text || ''}
-                    type="processed"
-                    onSave={(newText) => {
-                      setImprovedText(newText);
-                      // Используем setTimeout чтобы дать время на обновление состояния
-                      setTimeout(() => handleSaveImprovedText(), 0);
-                    }}
-                    isLoading={updatePostMutation.isLoading}
-                  />
-                </div>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <div className="px-6 py-2 border-b bg-muted/20">
+                <TabsList className="grid w-full max-w-md grid-cols-2 mx-auto">
+                  <TabsTrigger value="preview" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Eye className="h-4 w-4" />
+                    Просмотр
+                  </TabsTrigger>
+        
+                  <TabsTrigger value="info" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                    <Info className="h-4 w-4" />
+                    Информация
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            </TabsContent>
+
+              {/* Вкладка просмотра */}
+              <TabsContent value="preview" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                      {/* Оригинальный пост */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-lg flex items-center gap-3">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 shadow-sm"></div>
+                            Оригинальный пост
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopyText(post.original_text || '')}
+                              className="gap-2 text-muted-foreground hover:text-foreground"
+                            >
+                              <Copy className="h-4 w-4" />
+                              Копировать
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <TelegramPost 
+                          text={post.original_text || ''} 
+                          type="original" 
+                          post={post} 
+                          onMediaClick={handleMediaClick}
+                        />
+                        
+                        {/* Кнопка открытия в Telegram */}
+                        {getTelegramPostUrl() && (
+                          <div className="flex justify-center pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              asChild
+                              className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+                            >
+                              <a
+                                href={getTelegramPostUrl()!}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Открыть в Telegram
+                              </a>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Улучшенный пост */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-lg flex items-center gap-3">
+                            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 shadow-sm"></div>
+                            Улучшенный пост
+                          </h3>
+                          {(improvedText || post.processed_text) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCopyText(improvedText || post.processed_text || '')}
+                              className="gap-2 text-muted-foreground hover:text-foreground"
+                            >
+                              <Copy className="h-4 w-4" />
+                              Копировать
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <EditableTextSection
+                          post={post}
+                          text={improvedText || post.processed_text || ''}
+                          type="processed"
+                          onSave={(newText) => {
+                            setImprovedText(newText);
+                            setTimeout(() => handleSaveImprovedText(), 0);
+                          }}
+                          isLoading={updatePostMutation.isLoading}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
 
   
-            {/* Вкладка информации */}
-            <TabsContent value="info" className="flex-1 overflow-y-auto mt-4">
-              <div className="space-y-6">
-                <PostMetadata post={post} />
-                
-                {post.source_channel && (
-                  <div className="bg-card rounded-lg border p-4">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <ExternalLink className="h-5 w-5" />
-                      Источник
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Канал:</span>
-                        <span className="font-medium">
-                          {post.source_channel.channel_name || post.source_channel.channel_username}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">ID сообщения:</span>
-                        <span className="font-mono">{post.original_message_id}</span>
-                      </div>
+              {/* Вкладка информации */}
+              <TabsContent value="info" className="flex-1 overflow-hidden">
+                <ScrollArea className="h-full">
+                  <div className="p-6">
+                    <div className="space-y-6">
+                      <PostMetadata post={post} />
+                      
+                      {post.source_channel && (
+                        <div className="bg-gradient-to-br from-card to-muted/20 rounded-xl border p-6 shadow-sm">
+                          <h3 className="font-semibold mb-4 flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-lg">
+                              <ExternalLink className="h-5 w-5 text-primary" />
+                            </div>
+                            Источник
+                          </h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                            <div className="space-y-2">
+                              <span className="text-muted-foreground font-medium">Канал:</span>
+                              <p className="font-medium text-foreground">
+                                {post.source_channel.channel_name || post.source_channel.channel_username}
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <span className="text-muted-foreground font-medium">ID сообщения:</span>
+                              <p className="font-mono text-foreground bg-muted/50 px-2 py-1 rounded text-xs">
+                                {post.original_message_id}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
+                </ScrollArea>
+              </TabsContent>
+             </Tabs>
+           </div>
+         </DialogContent>
       </Dialog>
       
       {/* Schedule Dialog */}

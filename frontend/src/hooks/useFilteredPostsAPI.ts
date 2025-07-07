@@ -25,6 +25,18 @@ export function useFilteredPostsAPI(filters: PostFilters) {
   );
 }
 
+export function usePostsCount(filters: Omit<PostFilters, 'skip' | 'limit'>) {
+  return useQuery<number, Error>(
+    ['posts-count', filters],
+    () => postsAPI.getCount(filters).then(res => res.data.count),
+    {
+      staleTime: 30000, // 30 seconds
+      refetchInterval: 60000, // 1 minute
+      keepPreviousData: true,
+    }
+  );
+}
+
 export function usePostsStats(posts: Post[] | undefined) {
   if (!posts) {
     return {

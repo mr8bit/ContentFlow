@@ -243,6 +243,15 @@ export const postsAPI = {
     is_manual?: boolean;
   }) =>
     apiClient.get<Post[]>('/posts', { params }),
+  getCount: (params?: {
+    status?: string;
+    source_channel_id?: number;
+    target_channel_id?: number;
+    date_from?: string;
+    date_to?: string;
+    is_manual?: boolean;
+  }) =>
+    apiClient.get<{ count: number }>('/posts/count', { params }),
   getById: (id: number) => apiClient.get<Post>(`/posts/${id}`),
   update: (id: number, data: PostUpdate) =>
     apiClient.put<Post>(`/posts/${id}`, data),
