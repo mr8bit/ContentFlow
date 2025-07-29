@@ -7,7 +7,7 @@ from datetime import timedelta, datetime, timezone
 import logging
 
 from database import get_db, engine
-from models import Base, User
+from models import Base, User, PostStatus
 from schemas import (
     UserLogin, UserCreate, Token, User as UserSchema,
     SourceChannel, SourceChannelCreate, SourceChannelUpdate,
@@ -25,6 +25,7 @@ from config import settings
 from telegram_service import telegram_service
 from openrouter_service import openrouter_service
 from upload_service import upload_service
+# LLM Worker now runs as separate service
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -131,6 +132,15 @@ async def startup_event():
     
     print(f"Telegram Bot: {'✓' if telegram_ok else '✗'}")
     print(f"OpenRouter API: {'✓' if openrouter_ok else '✗'}")
+    
+    # LLM Worker now runs as separate service
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on application shutdown."""
+    # LLM Worker now runs as separate service
+    pass
 
 
 # Authentication endpoints
@@ -325,6 +335,38 @@ async def delete_target_channel(
     if not success:
         raise HTTPException(status_code=404, detail="Channel not found")
     return {"message": "Channel deleted successfully"}
+
+
+# LLM Classification endpoints
+@app.post("/api/posts/{post_id}/classify", response_model=Post)
+async def classify_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Manually trigger LLM classification for a specific post"""
+    from services.llm_classifier import LLMClassifier
+    from config import settings
+    
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Get OpenRouter API key from database
+    openrouter_key_setting = crud.get_setting(db, "openrouter_api_key")
+    if not openrouter_key_setting or not openrouter_key_setting.value.strip():
+        raise HTTPException(status_code=500, detail="OpenRouter API key not configured in database")
+    
+    # Get model from settings or use default
+    model = settings.openrouter_model or "anthropic/claude-3-haiku"
+    
+    classifier = LLMClassifier(openrouter_key_setting.value, model)
+    success = await classifier.process_post_classification(db, post)
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to classify post")
+    
+    return post
 
 
 # Posts endpoints
@@ -523,7 +565,7 @@ async def publish_post(
     
     # Update target channel and mark for immediate publishing
     post.target_channel_id = publish_data.target_channel_id
-    post.status = "publishing"  # Mark as being published
+    post.status = PostStatus.PUBLISHING  # Mark as being published
     post.scheduled_at = datetime.now(timezone.utc)  # Set to publish immediately
     
     db.commit()
@@ -1488,6 +1530,51 @@ async def restart_publisher(
     await asyncio.sleep(2)
     crud.update_publisher_status(db, should_run=True)
     return {"message": "Publisher restart signal sent", "status": "success"}
+
+
+@app.get("/api/llm-worker/status", response_model=ServiceStatus)
+async def get_llm_worker_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get LLM worker service status"""
+    status = crud.get_or_create_llm_worker_status(db)
+    return status
+
+
+@app.post("/api/llm-worker/start")
+async def start_llm_worker_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Start LLM worker service"""
+    crud.update_llm_worker_status(db, should_run=True)
+    return {"message": "LLM Worker start signal sent", "status": "success"}
+
+
+@app.post("/api/llm-worker/stop")
+async def stop_llm_worker_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Stop LLM worker service"""
+    crud.update_llm_worker_status(db, should_run=False)
+    return {"message": "LLM Worker stop signal sent", "status": "success"}
+
+
+@app.post("/api/llm-worker/restart")
+async def restart_llm_worker_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Restart LLM worker service"""
+    # First stop, then start
+    crud.update_llm_worker_status(db, should_run=False)
+    # Give it a moment to stop
+    import asyncio
+    await asyncio.sleep(2)
+    crud.update_llm_worker_status(db, should_run=True)
+    return {"message": "LLM Worker restart signal sent", "status": "success"}
 
 
 # Health check

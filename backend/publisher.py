@@ -6,7 +6,7 @@ from database import SessionLocal
 from models import Post, PostStatus
 import crud
 from telegram_service import telegram_service
-from openrouter_service import openrouter_service
+# openrouter_service import removed - now handled by separate LLM Worker
 from telegram.constants import ParseMode
 from telegram.error import TimedOut
 
@@ -38,9 +38,7 @@ class PostPublisher:
         status_task = asyncio.create_task(self.check_database_status())
         self.tasks.add(status_task)
         
-        # Start post processing loop
-        processor_task = asyncio.create_task(self.process_posts())
-        self.tasks.add(processor_task)
+        # LLM processing is now handled by separate LLM Worker
         
         # Start publisher loop
         publisher_task = asyncio.create_task(self.publish_posts())
@@ -98,102 +96,7 @@ class PostPublisher:
                 logger.error(f"Error sending heartbeat: {str(e)}")
                 await asyncio.sleep(30)
     
-    async def process_posts(self):
-        """Process pending posts with OpenRouter."""
-        logger.info("Post processing loop started")
-        
-        while self.running:
-            try:
-                db = SessionLocal()
-                
-                # Get pending posts that haven't been processed yet
-                pending_posts = db.query(Post).filter(
-                    Post.status == PostStatus.PENDING,
-                    Post.processed_at.is_(None)
-                ).limit(5).all()
-                
-                for post in pending_posts:
-                    try:
-                        await self.process_single_post(db, post)
-                    except Exception as e:
-                        logger.error(f"Error processing post {post.id}: {str(e)}")
-                
-                db.close()
-                
-                # Wait before processing more posts
-                await asyncio.sleep(10)
-                
-            except Exception as e:
-                logger.error(f"Error in post processing loop: {str(e)}")
-                await asyncio.sleep(30)
-    
-    async def process_single_post_with_new_session(self, post_id: int):
-        """Process a single post with OpenRouter using a new database session."""
-        db = SessionLocal()
-        try:
-            # Get the post from database
-            post = crud.get_post(db, post_id)
-            if not post:
-                logger.error(f"❌ Пост {post_id} не найден в базе данных")
-                return
-            
-            await self.process_single_post(db, post)
-        finally:
-            db.close()
-    
-    async def process_single_post(self, db: Session, post: Post):
-        """Process a single post with OpenRouter."""
-        # Check if post has content (text or media)
-        has_text = post.original_text and post.original_text.strip()
-        has_media = post.original_media is not None
-        
-        if not has_text and not has_media:
-            logger.info(f"⚠️ Пост {post.id} не содержит текста и медиафайлов для обработки")
-            return
-        
-        # Skip processing if post has only media without text (media-only posts don't need text processing)
-        if not has_text:
-            logger.info(f"📷 Пост {post.id} содержит только медиа, пропускаю обработку текста")
-            # Mark as processed so it doesn't get picked up again for text processing
-            post.processed_at = datetime.now(timezone.utc)
-            db.commit()
-            return
-        
-        # Get source channel info for context
-        source_channel = None
-        channel_name = "Frontend Created Post"
-        if post.source_channel_id:
-            source_channel = crud.get_source_channel(db, post.source_channel_id)
-            channel_name = source_channel.channel_name if source_channel else "Неизвестный канал"
-        
-        logger.info(f"🤖 Начинаю обработку поста {post.id} с помощью OpenRouter")
-        logger.info(f"📍 Источник: {channel_name}")
-        logger.info(f"📝 Длина оригинального текста: {len(post.original_text)} символов")
-        logger.info(f"📅 Время начала обработки: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-        
-        try:
-            context = f"Source: {channel_name}" if source_channel else None
-            
-            # Rewrite text using OpenRouter
-            processed_text = await openrouter_service.rewrite_text(
-                post.original_text,
-                context=context
-            )
-            
-            if processed_text:
-                # Update post with processed text
-                post.processed_text = processed_text
-                post.processed_at = datetime.now(timezone.utc)
-                db.commit()
-                
-                logger.info(f"✅ Пост {post.id} успешно обработан")
-                logger.info(f"📊 Длина обработанного текста: {len(processed_text)} символов")
-                logger.info(f"⏱️ Время завершения: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            else:
-                logger.warning(f"❌ Не удалось обработать пост {post.id} - OpenRouter не вернул текст")
-                
-        except Exception as e:
-            logger.error(f"💥 Ошибка при обработке поста {post.id}: {str(e)}")
+    # LLM processing methods removed - now handled by separate LLM Worker
     
     async def publish_posts(self):
         """Publish scheduled posts and posts marked for immediate publishing."""

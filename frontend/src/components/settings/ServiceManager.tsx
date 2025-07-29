@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Loader2, Play, Square, Activity, CheckCircle, XCircle, RefreshCw, RotateCcw } from 'lucide-react';
-import { useScrapper, usePublisher } from '../../hooks/useServices';
+import { useScrapper, usePublisher, useLLMWorker } from '../../hooks/useServices';
 import { ServiceStatus } from '../../services/api';
 
 interface ServiceCardProps {
@@ -209,9 +209,19 @@ export const ServiceManager: React.FC = () => {
     restartPublisherMutation,
   } = usePublisher();
 
+  const {
+    error: llmWorkerError,
+    success: llmWorkerSuccess,
+    llmWorkerStatus,
+    getLLMWorkerStatusMutation,
+    startLLMWorkerMutation,
+    stopLLMWorkerMutation,
+    restartLLMWorkerMutation,
+  } = useLLMWorker();
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         <ServiceCard
           title="Scrapper"
           icon={<Activity className="h-5 w-5" />}
@@ -246,6 +256,24 @@ export const ServiceManager: React.FC = () => {
           onStart={() => startPublisherMutation.mutate()}
           onStop={() => stopPublisherMutation.mutate()}
           onRestart={() => restartPublisherMutation.mutate()}
+        />
+
+        <ServiceCard
+          title="LLM Worker"
+          icon={<Activity className="h-5 w-5" />}
+          status={llmWorkerStatus}
+          error={llmWorkerError}
+          success={llmWorkerSuccess}
+          isLoading={{
+            status: getLLMWorkerStatusMutation.isLoading,
+            start: startLLMWorkerMutation.isLoading,
+            stop: stopLLMWorkerMutation.isLoading,
+            restart: restartLLMWorkerMutation.isLoading,
+          }}
+          onRefresh={() => getLLMWorkerStatusMutation.mutate()}
+          onStart={() => startLLMWorkerMutation.mutate()}
+          onStop={() => stopLLMWorkerMutation.mutate()}
+          onRestart={() => restartLLMWorkerMutation.mutate()}
         />
       </div>
     </div>

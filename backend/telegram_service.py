@@ -28,7 +28,13 @@ logger = logging.getLogger(__name__)
 
 def escape_markdown_v2(text: str) -> str:
     """
-    Escape special characters for Telegram MarkdownV2 format.
+    Smart escape for Telegram MarkdownV2 format that preserves intended formatting.
+    
+    This function will:
+    1. Preserve **bold** formatting (double asterisks)
+    2. Preserve __italic__ formatting (double underscores) 
+    3. Preserve `code` formatting (backticks)
+    4. Escape other special characters that could break parsing
     
     Characters that need to be escaped in MarkdownV2:
     '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'
@@ -36,12 +42,54 @@ def escape_markdown_v2(text: str) -> str:
     if not text:
         return text
     
-    # Characters that need to be escaped in MarkdownV2
+    import re
+    
+    # First, protect intended markdown formatting by replacing with unique placeholders
+    # Use unique markers that won't conflict with escaping
+    
+    # Protect **bold** text
+    bold_pattern = r'\*\*([^*]+?)\*\*'
+    bold_matches = re.findall(bold_pattern, text)
+    bold_placeholders = {}
+    for i, match in enumerate(bold_matches):
+        placeholder = f'XXXBOLDXXX{i}XXXBOLDXXX'
+        bold_placeholders[placeholder] = f'**{match}**'
+        text = text.replace(f'**{match}**', placeholder, 1)
+    
+    # Protect __italic__ text  
+    italic_pattern = r'__([^_]+?)__'
+    italic_matches = re.findall(italic_pattern, text)
+    italic_placeholders = {}
+    for i, match in enumerate(italic_matches):
+        placeholder = f'XXXITALICXXX{i}XXXITALICXXX'
+        italic_placeholders[placeholder] = f'__{match}__'
+        text = text.replace(f'__{match}__', placeholder, 1)
+    
+    # Protect `code` text
+    code_pattern = r'`([^`]+?)`'
+    code_matches = re.findall(code_pattern, text)
+    code_placeholders = {}
+    for i, match in enumerate(code_matches):
+        placeholder = f'XXXCODEXXX{i}XXXCODEXXX'
+        code_placeholders[placeholder] = f'`{match}`'
+        text = text.replace(f'`{match}`', placeholder, 1)
+    
+    # Now escape all special characters except those in our protected formatting
     special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
     
     escaped_text = text
     for char in special_chars:
         escaped_text = escaped_text.replace(char, f'\\{char}')
+    
+    # Restore protected formatting
+    for placeholder, original in bold_placeholders.items():
+        escaped_text = escaped_text.replace(placeholder, original)
+    
+    for placeholder, original in italic_placeholders.items():
+        escaped_text = escaped_text.replace(placeholder, original)
+        
+    for placeholder, original in code_placeholders.items():
+        escaped_text = escaped_text.replace(placeholder, original)
     
     return escaped_text
 

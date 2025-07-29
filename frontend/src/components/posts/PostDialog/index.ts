@@ -5,6 +5,7 @@ export { TelegramPost } from './TelegramPost';
 export { PostMetadata } from './PostMetadata';
 export { ImprovedTextSection } from './ImprovedTextSection';
 export { FullscreenMediaModal } from './FullscreenMediaModal';
+export { MarkdownRenderer } from './MarkdownRenderer';
 export * from './types';
 export * from './utils';
 export * from './hooks';

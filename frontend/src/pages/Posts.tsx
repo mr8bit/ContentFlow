@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Post, TargetChannel } from '../types';
 import {
   PostsHeader,
@@ -44,6 +45,7 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 };
 
 export function Posts(): JSX.Element {
+  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState(0);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [advancedFilters, setAdvancedFilters] = useState<FilterParams>({});
@@ -145,8 +147,8 @@ export function Posts(): JSX.Element {
   }, []);
 
   const handleViewPost = useCallback((post: Post) => {
-    setDialogs(prev => ({ ...prev, view: post }));
-  }, []);
+    navigate(`/posts/${post.id}`);
+  }, [navigate]);
 
   const handleEditPost = useCallback((post: Post) => {
     setDialogs(prev => ({ ...prev, edit: post }));

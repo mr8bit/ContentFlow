@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Checkbox } from '../components/ui/checkbox';
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
@@ -19,9 +23,10 @@ import {
   XCircle as CancelIcon,
   Send as PublishIcon,
   Loader2,
+  X,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { targetChannelsAPI, TargetChannel, TargetChannelCreate } from '../services/api';
+import { targetChannelsAPI } from '../services/api';
+import type { TargetChannel, TargetChannelCreate } from '../types';
 
 interface ChannelDialogProps {
   open: boolean;
@@ -35,18 +40,31 @@ function ChannelDialog({ open, onClose, channel, onSubmit, loading }: ChannelDia
   const [formData, setFormData] = useState<TargetChannelCreate>({
     channel_id: '',
     channel_name: '',
+    description: '',
+    tags: [],
+    classification_threshold: 80,
+    auto_publish_enabled: false,
   });
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     if (channel) {
       setFormData({
         channel_id: channel.channel_id,
         channel_name: channel.channel_name,
+        description: channel.description || '',
+        tags: channel.tags || [],
+        classification_threshold: channel.classification_threshold || 80,
+        auto_publish_enabled: channel.auto_publish_enabled || false,
       });
     } else {
       setFormData({
         channel_id: '',
         channel_name: '',
+        description: '',
+        tags: [],
+        classification_threshold: 80,
+        auto_publish_enabled: false,
       });
     }
   }, [channel]);
@@ -62,6 +80,10 @@ function ChannelDialog({ open, onClose, channel, onSubmit, loading }: ChannelDia
       setFormData({
         channel_id: '',
         channel_name: '',
+        description: '',
+        tags: [],
+        classification_threshold: 80,
+        auto_publish_enabled: false,
       });
     }
   };
@@ -102,6 +124,126 @@ function ChannelDialog({ open, onClose, channel, onSubmit, loading }: ChannelDia
                 disabled={loading}
                 className="text-xs sm:text-sm h-8 sm:h-10"
               />
+            </div>
+            <div className="grid gap-1.5 sm:gap-2">
+              <label htmlFor="description" className="text-xs sm:text-sm font-medium">
+                Описание канала
+              </label>
+              <Textarea
+                id="description"
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                disabled={loading}
+                placeholder="Подробное описание тематики канала для LLM классификации. Укажите основные темы, стиль контента, целевую аудиторию и другие важные характеристики канала."
+                className="text-xs sm:text-sm min-h-[120px] resize-y"
+                rows={6}
+              />
+            </div>
+            <div className="grid gap-1.5 sm:gap-2">
+              <label className="text-xs sm:text-sm font-medium">
+                Теги канала
+              </label>
+              <div className="border rounded-md p-3 min-h-[80px] bg-background">
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                   {(formData.tags || []).map((tag: string, index: number) => (
+                     <Badge key={index} variant="secondary" className="text-xs px-2 py-1 hover:bg-secondary/80 transition-colors">
+                       {tag}
+                       <Button
+                         type="button"
+                         variant="ghost"
+                         size="sm"
+                         className="h-4 w-4 p-0 ml-1.5 hover:bg-destructive hover:text-destructive-foreground rounded-full"
+                         onClick={() => {
+                           const newTags = [...(formData.tags || [])];
+                           newTags.splice(index, 1);
+                           setFormData({ ...formData, tags: newTags });
+                         }}
+                       >
+                         <X className="h-3 w-3" />
+                       </Button>
+                     </Badge>
+                   ))}
+                   {(formData.tags || []).length === 0 && (
+                     <span className="text-xs text-muted-foreground italic">Теги не добавлены</span>
+                   )}
+                 </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    placeholder="Введите тег и нажмите Enter или кнопку добавления"
+                    className="text-xs sm:text-sm h-8 sm:h-9 flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (tagInput.trim() && !(formData.tags || []).includes(tagInput.trim())) {
+                          setFormData({ 
+                            ...formData, 
+                            tags: [...(formData.tags || []), tagInput.trim()] 
+                          });
+                          setTagInput('');
+                        }
+                      }
+                    }}
+                    disabled={loading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (tagInput.trim() && !(formData.tags || []).includes(tagInput.trim())) {
+                        setFormData({ 
+                          ...formData, 
+                          tags: [...(formData.tags || []), tagInput.trim()] 
+                        });
+                        setTagInput('');
+                      }
+                    }}
+                    className="h-8 sm:h-9 px-3 shrink-0"
+                    disabled={loading || !tagInput.trim() || (formData.tags || []).includes(tagInput.trim())}
+                  >
+                    <AddIcon className="h-3 w-3 mr-1" />
+                    Добавить
+                  </Button>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Добавлено тегов: {(formData.tags || []).length}
+                </div>
+              </div>
+            </div>
+            <div className="grid gap-1.5 sm:gap-2">
+              <label className="text-xs sm:text-sm font-medium">
+                Точность классификации: {formData.classification_threshold || 80}%
+              </label>
+              <div className="px-2">
+                <input
+                  type="range"
+                  min="50"
+                  max="100"
+                  step="5"
+                  value={formData.classification_threshold || 80}
+                  onChange={(e) => setFormData({ ...formData, classification_threshold: parseInt(e.target.value) })}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>50%</span>
+                  <span>75%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="auto_publish"
+                checked={formData.auto_publish_enabled || false}
+                onChange={(e) => setFormData({ ...formData, auto_publish_enabled: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <label htmlFor="auto_publish" className="text-xs sm:text-sm font-medium">
+                Разрешить автоматическую публикацию
+              </label>
             </div>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 px-1 sm:px-0">

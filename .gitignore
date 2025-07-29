@@ -5,6 +5,28 @@
 .env.test.local
 .env.production.local
 
+# Telegram session files (CRITICAL - NEVER COMMIT THESE)
+*.session
+telethon_session_string.txt
+session_string.txt
+sessions/
+*.session-journal
+
+# API Keys and secrets
+*_api_key*
+*_secret*
+*_token*
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local development files
+local_*
+temp_*
+test_*
+debug_*
+
 # Python
 __pycache__/
 *.py[cod]

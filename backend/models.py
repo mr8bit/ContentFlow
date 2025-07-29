@@ -10,12 +10,15 @@ Base = declarative_base()
 
 class PostStatus(str, Enum):
     PENDING = "pending"
+    SCRAPED = "scraped"  # Пост получен из источника
+    WAITING = "waiting"  # Ожидает ручного одобрения
     PROCESSED = "processed"
     APPROVED = "approved"
     REJECTED = "rejected"
     SCHEDULED = "scheduled"
     PUBLISHING = "publishing"
     PUBLISHED = "published"
+    FAILED = "failed"  # Ошибка обработки
 
 
 class User(Base):
@@ -54,6 +57,11 @@ class TargetChannel(Base):
     channel_id = Column(String, unique=True, index=True, nullable=False)
     channel_name = Column(String, nullable=False)
     channel_username = Column(String, nullable=True)
+    description = Column(Text, nullable=True)  # Описание канала
+    tags = Column(JSON, nullable=True)  # Теги канала
+    classification_threshold = Column(Integer, default=80)  # Точность классификации (50-100%)
+    auto_publish_enabled = Column(Boolean, default=False)  # Разрешить автоматическую публикацию
+    rewrite_prompt = Column(Text, nullable=True)  # Промпт для переписывания постов в стиль канала
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -76,6 +84,10 @@ class Post(Base):
     
     # Processed post data
     processed_text = Column(Text, nullable=True)
+    
+    # LLM classification data
+    llm_classification_confidence = Column(Integer, nullable=True)  # Точность классификации LLM (0-100%)
+    llm_classification_result = Column(Text, nullable=True)  # Результат классификации LLM
     
     # Manual post flag
     is_manual = Column(Boolean, default=False, nullable=False)
@@ -151,6 +163,19 @@ class ScrapperStatus(Base):
 
 class PublisherStatus(Base):
     __tablename__ = "publisher_status"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    is_running = Column(Boolean, default=False)
+    should_run = Column(Boolean, default=False)
+    last_heartbeat = Column(DateTime(timezone=True), nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    stopped_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class LLMWorkerStatus(Base):
+    __tablename__ = "llm_worker_status"
     
     id = Column(Integer, primary_key=True, index=True)
     is_running = Column(Boolean, default=False)

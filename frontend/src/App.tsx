@@ -8,10 +8,13 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Analytics from './pages/Analytics';
 import Channels from './pages/Channels';
 import Posts from './pages/Posts';
 import CreatePost from './pages/CreatePost';
 import Settings from './pages/Settings';
+import { PostViewPage } from './pages/PostViewPage';
+import './i18n';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +67,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Analytics />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/channels"
         element={
           <ProtectedRoute>
@@ -89,6 +102,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <CreatePost />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/posts/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <PostViewPage />
             </Layout>
           </ProtectedRoute>
         }

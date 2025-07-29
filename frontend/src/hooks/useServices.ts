@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from 'react-query';
-import { scrapperAPI, publisherAPI, ServiceStatus } from '../services/api';
+import { scrapperAPI, publisherAPI, llmWorkerAPI, ServiceStatus } from '../services/api';
 
 export const useScrapper = () => {
   const [error, setError] = useState('');
@@ -190,6 +190,103 @@ export const usePublisher = () => {
     startPublisherMutation,
     stopPublisherMutation,
     restartPublisherMutation,
+    
+    // Actions
+    clearMessages,
+  };
+};
+
+export const useLLMWorker = () => {
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [llmWorkerStatus, setLLMWorkerStatus] = useState<ServiceStatus | null>(null);
+
+  const getLLMWorkerStatusMutation = useMutation(
+    () => llmWorkerAPI.getStatus(),
+    {
+      onSuccess: (response) => {
+        setLLMWorkerStatus(response.data);
+      },
+      onError: (err: any) => {
+        console.error('Failed to get LLM worker status:', err);
+        setError(err.response?.data?.detail || 'Ошибка при получении статуса LLM worker');
+      },
+    }
+  );
+
+  const startLLMWorkerMutation = useMutation(
+    () => llmWorkerAPI.start(),
+    {
+      onSuccess: (response) => {
+        setSuccess(response.data.message || 'LLM Worker запущен');
+        setError('');
+        setTimeout(() => setSuccess(''), 3000);
+        // Обновляем статус через небольшую задержку
+        setTimeout(() => getLLMWorkerStatusMutation.mutate(), 1000);
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.detail || 'Ошибка при запуске LLM worker');
+        setSuccess('');
+      },
+    }
+  );
+
+  const stopLLMWorkerMutation = useMutation(
+    () => llmWorkerAPI.stop(),
+    {
+      onSuccess: (response) => {
+        setSuccess(response.data.message || 'LLM Worker остановлен');
+        setError('');
+        setTimeout(() => setSuccess(''), 3000);
+        // Обновляем статус через небольшую задержку
+        setTimeout(() => getLLMWorkerStatusMutation.mutate(), 1000);
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.detail || 'Ошибка при остановке LLM worker');
+        setSuccess('');
+      },
+    }
+  );
+
+  const restartLLMWorkerMutation = useMutation(
+    () => llmWorkerAPI.restart(),
+    {
+      onSuccess: (response) => {
+        setSuccess(response.data.message || 'LLM Worker перезапущен');
+        setError('');
+        setTimeout(() => setSuccess(''), 3000);
+        // Обновляем статус через небольшую задержку
+        setTimeout(() => getLLMWorkerStatusMutation.mutate(), 2000);
+      },
+      onError: (err: any) => {
+        setError(err.response?.data?.detail || 'Ошибка при перезапуске LLM worker');
+        setSuccess('');
+      },
+    }
+  );
+
+  const clearMessages = () => {
+    setError('');
+    setSuccess('');
+  };
+
+  // Auto-fetch LLM worker status on mount
+  useEffect(() => {
+    getLLMWorkerStatusMutation.mutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return {
+    // State
+    error,
+    success,
+    llmWorkerStatus,
+    
+    // Mutations
+    getLLMWorkerStatusMutation,
+    startLLMWorkerMutation,
+    stopLLMWorkerMutation,
+    restartLLMWorkerMutation,
     
     // Actions
     clearMessages,

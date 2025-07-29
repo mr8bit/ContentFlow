@@ -1,0 +1,115 @@
+name: Bug Report
+description: Сообщить об ошибке в Auto Poster Bot
+title: "[BUG] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение об ошибке! Пожалуйста, заполните форму ниже.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание ошибки
+      description: Четкое и краткое описание ошибки
+      placeholder: Опишите, что произошло...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Шаги для воспроизведения
+      description: Шаги для воспроизведения ошибки
+      placeholder: |
+        1. Перейти к '...'
+        2. Нажать на '...'
+        3. Прокрутить вниз до '...'
+        4. Увидеть ошибку
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+      description: Что должно было произойти
+      placeholder: Опишите ожидаемое поведение...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      description: Что произошло на самом деле
+      placeholder: Опишите фактическое поведение...
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты
+      description: Если применимо, добавьте скриншоты для объяснения проблемы
+      placeholder: Перетащите изображения сюда или вставьте ссылки
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      description: Какой компонент затронут?
+      options:
+        - Frontend (React)
+        - Backend API
+        - Scrapper Service
+        - Publisher Service
+        - LLM Worker
+        - Database
+        - Docker/Infrastructure
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Серьезность
+      description: Насколько серьезна эта ошибка?
+      options:
+        - Critical (система не работает)
+        - High (основная функциональность нарушена)
+        - Medium (некоторые функции не работают)
+        - Low (косметические проблемы)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Окружение
+      description: Информация о вашем окружении
+      placeholder: |
+        - OS: [например, Ubuntu 20.04]
+        - Docker version: [например, 20.10.7]
+        - Browser: [например, Chrome 91]
+        - Version: [например, v1.0.0]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи
+      description: Соответствующие логи или сообщения об ошибках
+      placeholder: Вставьте логи здесь...
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация об ошибке
+      placeholder: Добавьте любую другую информацию...

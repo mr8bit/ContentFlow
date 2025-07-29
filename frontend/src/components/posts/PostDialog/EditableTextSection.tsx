@@ -163,25 +163,25 @@ export const EditableTextSection: React.FC<EditableTextSectionProps> = ({
 
   if (isEditing) {
     return (
-      <div className="space-y-6 p-6 bg-gradient-to-br from-muted/30 to-card rounded-xl border">
+      <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 bg-gradient-to-br from-muted/30 to-card rounded-xl border shadow-sm hover:shadow-md transition-shadow duration-200">
         <div className="space-y-3">
-          <label className="text-sm font-semibold text-foreground">Редактирование текста</label>
+          <label className="text-sm sm:text-base font-semibold text-foreground">Редактирование текста</label>
           <Textarea
             value={editedText}
             onChange={(e) => setEditedText(e.target.value)}
-            className="min-h-40 text-sm border-muted-foreground/20 focus:ring-primary/20 bg-background/50"
+            className="min-h-32 sm:min-h-40 text-sm sm:text-base border-muted-foreground/20 focus:ring-primary/20 bg-background/50 rounded-lg"
             placeholder="Редактировать текст поста..."
             disabled={isLoading}
           />
         </div>
         
-        <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 sm:p-4 bg-muted/30 rounded-lg">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <Button
               onClick={handleSave}
               disabled={isLoading}
               size="sm"
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white transition-all duration-200"
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white transition-all duration-200 w-full sm:w-auto"
             >
               <Save className="h-4 w-4" />
               {isLoading ? 'Сохраняю...' : 'Сохранить'}
@@ -192,7 +192,7 @@ export const EditableTextSection: React.FC<EditableTextSectionProps> = ({
               onClick={handleCancel}
               disabled={isLoading}
               size="sm"
-              className="gap-2 transition-all duration-200"
+              className="gap-2 transition-all duration-200 w-full sm:w-auto"
             >
               <X className="h-4 w-4" />
               Отменить
@@ -203,7 +203,7 @@ export const EditableTextSection: React.FC<EditableTextSectionProps> = ({
               onClick={() => setShowAI(!showAI)}
               disabled={isLoading}
               size="sm"
-              className="gap-2 transition-all duration-200"
+              className="gap-2 transition-all duration-200 w-full sm:w-auto"
             >
               <Sparkles className="h-4 w-4" />
               Использовать ИИ

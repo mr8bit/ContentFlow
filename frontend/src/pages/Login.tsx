@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Lock } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Lock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { useAuth } from '../contexts/AuthContext';
+import { LanguageToggle } from '../components/LanguageToggle';
 
 
 export default function Login() {
@@ -15,6 +17,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,10 +30,10 @@ export default function Login() {
       if (success) {
         navigate('/');
       } else {
-        setError('Неверное имя пользователя или пароль');
+        setError(t('auth.loginError'));
       }
     } catch (err) {
-      setError('Произошла ошибка при входе в систему');
+      setError(t('auth.loginError'));
     } finally {
       setLoading(false);
     }
@@ -38,6 +41,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      {/* Language Toggle - positioned absolutely */}
+      <div className="absolute top-4 right-4">
+        <LanguageToggle />
+      </div>
+      
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -45,9 +53,9 @@ export default function Login() {
               <Lock className="h-6 w-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Auto Poster Bot</CardTitle>
+          <CardTitle className="text-2xl font-bold">ContentFlow</CardTitle>
           <CardDescription>
-            Войдите в систему для управления автоматическим репостингом
+            {t('auth.login')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -59,7 +67,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Имя пользователя</Label>
+              <Label htmlFor="username">{t('auth.username')}</Label>
               <Input
                 id="username"
                 name="username"
@@ -73,7 +81,7 @@ export default function Login() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 name="password"
@@ -90,28 +98,28 @@ export default function Login() {
               className="w-full"
               disabled={loading || !username || !password}
             >
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? `${t('common.loading')}` : t('auth.loginButton')}
             </Button>
           </form>
 
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              Нет аккаунта?{' '}
+              {t('auth.noAccount', { defaultValue: 'No account?' })}{' '}
               <button
                 type="button"
                 onClick={() => navigate('/register')}
                 className="text-primary hover:underline"
               >
-                Зарегистрироваться
+                {t('auth.register', { defaultValue: 'Register' })}
               </button>
             </p>
           </div>
 
           <div className="p-3 bg-muted rounded-md">
             <p className="text-xs text-muted-foreground">
-              <strong>Данные для входа по умолчанию:</strong><br />
-              Пользователь: admin<br />
-              Пароль: admin123
+              <strong>{t('auth.defaultCredentials', { defaultValue: 'Default credentials:' })}</strong><br />
+              {t('auth.username')}: admin<br />
+              {t('auth.password')}: admin123
             </p>
           </div>
         </CardContent>

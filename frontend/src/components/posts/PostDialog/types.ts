@@ -4,6 +4,7 @@ import { MediaItem } from '../../../services/api';
 export interface PostDialogProps {
   post: Post | null;
   onClose: () => void;
+  isFullPage?: boolean;
 }
 
 export type PostType = 'original' | 'processed' | 'improved';

@@ -8,11 +8,14 @@ import {
   ChevronRight,
   Zap,
   Plus,
+  BarChart3,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/index';
 import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 import { cn } from '../lib/utils';
 import PageTransition from './PageTransition';
 import { motion } from 'framer-motion';
@@ -21,39 +24,45 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const menuItems = [
-  {
-    text: 'Главная',
-    icon: <LayoutDashboard className="h-4 w-4" />,
-    path: '/',
-  },
-  {
-    text: 'Каналы',
-    icon: <Radio className="h-4 w-4" />,
-    path: '/channels',
-  },
-  {
-    text: 'Посты',
-    icon: <FileText className="h-4 w-4" />,
-    path: '/posts',
-  },
-  {
-    text: 'Создать пост',
-    icon: <Plus className="h-4 w-4" />,
-    path: '/posts/create',
-    isSubItem: true,
-  },
-  {
-    text: 'Настройки',
-    icon: <Settings className="h-4 w-4" />,
-    path: '/settings',
-  },
-];
-
 export default function Layout({ children }: LayoutProps) {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const menuItems = [
+    {
+      text: t('navigation.dashboard'),
+      icon: <LayoutDashboard className="h-4 w-4" />,
+      path: '/',
+    },
+    {
+      text: t('navigation.analytics'),
+      icon: <BarChart3 className="h-4 w-4" />,
+      path: '/analytics',
+    },
+    {
+      text: t('navigation.channels'),
+      icon: <Radio className="h-4 w-4" />,
+      path: '/channels',
+    },
+    {
+      text: t('navigation.posts'),
+      icon: <FileText className="h-4 w-4" />,
+      path: '/posts',
+    },
+    {
+      text: t('navigation.createPost'),
+      icon: <Plus className="h-4 w-4" />,
+      path: '/posts/create',
+      isSubItem: true,
+    },
+    {
+      text: t('navigation.settings'),
+      icon: <Settings className="h-4 w-4" />,
+      path: '/settings',
+    },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -112,7 +121,7 @@ export default function Layout({ children }: LayoutProps) {
       <nav className="flex-1 p-4 space-y-2">
         <div className="mb-4">
           <p className="text-xs font-semibold text-sidebar-foreground/50 uppercase tracking-wider px-3 mb-3">
-            Основное
+            {t('navigation.main')}
           </p>
         </div>
         
@@ -185,9 +194,9 @@ export default function Layout({ children }: LayoutProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
-              {user?.username || 'Пользователь'}
+              {user?.username || t('common.user')}
             </p>
-            <p className="text-xs text-sidebar-foreground/60">Администратор</p>
+            <p className="text-xs text-sidebar-foreground/60">{t('common.administrator')}</p>
           </div>
         </div>
       </div>
@@ -216,12 +225,13 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
               <span className="hidden sm:block text-sm text-muted-foreground truncate max-w-32 lg:max-w-none">
-                Добро пожаловать, {user?.username}
+                {t('common.welcome')}, {user?.username}
               </span>
+              <LanguageToggle />
               <ThemeToggle />
               <Button variant="ghost" onClick={handleLogout} className="gap-1 sm:gap-2 px-2 sm:px-3">
                 <LogOut className="h-4 w-4" />
-                <span className="hidden sm:inline">Выйти</span>
+                <span className="hidden sm:inline">{t('common.logout')}</span>
               </Button>
             </div>
           </div>
@@ -277,7 +287,7 @@ export default function Layout({ children }: LayoutProps) {
               <Settings className="h-4 w-4" />
             </div>
             <span className="text-xs font-medium truncate max-w-full">
-              Настройки
+              {t('navigation.settings')}
             </span>
           </motion.button>
         </div>

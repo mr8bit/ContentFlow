@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from enum import Enum
 from models import PostStatus
 
 
@@ -67,6 +68,11 @@ class TargetChannelBase(BaseModel):
     channel_id: str
     channel_name: str
     channel_username: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    classification_threshold: int = Field(default=80, ge=50, le=100)
+    auto_publish_enabled: bool = False
+    rewrite_prompt: Optional[str] = None
 
 
 class TargetChannelCreate(TargetChannelBase):
@@ -76,6 +82,11 @@ class TargetChannelCreate(TargetChannelBase):
 class TargetChannelUpdate(BaseModel):
     channel_name: Optional[str] = None
     channel_username: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[str]] = None
+    classification_threshold: Optional[int] = Field(default=None, ge=50, le=100)
+    auto_publish_enabled: Optional[bool] = None
+    rewrite_prompt: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -138,6 +149,8 @@ class Post(PostBase):
     target_channel_id: Optional[int]
     original_message_id: int
     processed_text: Optional[str]
+    llm_classification_confidence: Optional[int] = None
+    llm_classification_result: Optional[str] = None
     is_manual: bool = False
     status: PostStatus
     created_at: datetime

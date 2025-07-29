@@ -62,6 +62,11 @@ export interface TargetChannel {
   channel_id: string;
   channel_name: string;
   channel_username?: string;
+  description?: string;
+  tags?: string[];
+  classification_threshold: number;
+  auto_publish_enabled: boolean;
+  rewrite_prompt?: string;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -78,6 +83,11 @@ export interface TargetChannelCreate {
   channel_id: string;
   channel_name: string;
   channel_username?: string;
+  description?: string;
+  tags?: string[];
+  classification_threshold: number;
+  auto_publish_enabled: boolean;
+  rewrite_prompt?: string;
 }
 
 export interface MediaItem {
@@ -117,7 +127,7 @@ export interface Post {
   original_media?: OriginalMedia;
   media_type?: string;
   processed_text?: string;
-  status: 'pending' | 'processed' | 'approved' | 'rejected' | 'scheduled' | 'publishing' | 'published';
+  status: 'scraped' | 'processed' | 'waiting' | 'pending' | 'approved' | 'rejected' | 'scheduled' | 'publishing' | 'published' | 'failed';
   created_at: string;
   processed_at?: string;
   approved_at?: string;
@@ -126,6 +136,8 @@ export interface Post {
   published_message_id?: number;
   admin_notes?: string;
   approved_by?: number;
+  llm_classification_confidence?: number;
+  llm_classification_result?: any;
   source_channel?: SourceChannel;
   target_channel?: TargetChannel;
   approver?: User;
@@ -276,6 +288,8 @@ export const postsAPI = {
     apiClient.post<{ improved_text: string }>('/posts/improve-text', { text, model_id: modelId }),
   improveTextWithPrompt: (text: string, prompt: string, modelId?: number) =>
     apiClient.post<{ improved_text: string }>('/posts/improve-text-with-prompt', { text, prompt, model_id: modelId }),
+  classify: (id: number) =>
+    apiClient.post<Post>(`/posts/${id}/classify`),
 };
 
 export const settingsAPI = {
@@ -391,6 +405,13 @@ export const publisherAPI = {
   stop: () => apiClient.post<ServiceResponse>('/publisher/stop'),
   restart: () => apiClient.post<ServiceResponse>('/publisher/restart'),
   getStatus: () => apiClient.get<ServiceStatus>('/publisher/status'),
+};
+
+export const llmWorkerAPI = {
+  start: () => apiClient.post<ServiceResponse>('/llm-worker/start'),
+  stop: () => apiClient.post<ServiceResponse>('/llm-worker/stop'),
+  restart: () => apiClient.post<ServiceResponse>('/llm-worker/restart'),
+  getStatus: () => apiClient.get<ServiceStatus>('/llm-worker/status'),
 };
 
 export interface TelegramSettingsData {

@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, desc, func
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
-from models import User, SourceChannel, TargetChannel, Post, PostStatus, Settings, AIModel, WorkerStatus, ScrapperStatus, PublisherStatus
+from models import User, SourceChannel, TargetChannel, Post, PostStatus, Settings, AIModel, WorkerStatus, ScrapperStatus, PublisherStatus, LLMWorkerStatus
 from schemas import (
     UserCreate, SourceChannelCreate, SourceChannelUpdate,
     TargetChannelCreate, TargetChannelUpdate, PostCreate, PostUpdate,
@@ -250,6 +250,8 @@ def create_post(db: Session, post: PostCreate) -> Post:
     post_data = post.dict()
     # Set is_manual=False for posts created from Telegram scraper
     post_data['is_manual'] = False
+    # Set status to SCRAPED for posts created from scrapper
+    post_data['status'] = PostStatus.SCRAPED
     db_post = Post(**post_data)
     db.add(db_post)
     db.commit()
@@ -729,6 +731,46 @@ def set_default_ai_model(db: Session, model_id: int) -> Optional[AIModel]:
     db.commit()
     db.refresh(db_model)
     return db_model
+
+
+# LLM Worker Status CRUD
+def get_llm_worker_status(db: Session) -> Optional[LLMWorkerStatus]:
+    return db.query(LLMWorkerStatus).first()
+
+
+def get_or_create_llm_worker_status(db: Session) -> LLMWorkerStatus:
+    llm_worker_status = get_llm_worker_status(db)
+    if not llm_worker_status:
+        llm_worker_status = LLMWorkerStatus()
+        db.add(llm_worker_status)
+        db.commit()
+        db.refresh(llm_worker_status)
+    return llm_worker_status
+
+
+def update_llm_worker_status(db: Session, should_run: bool = None, is_running: bool = None, heartbeat: bool = False) -> LLMWorkerStatus:
+    llm_worker_status = get_or_create_llm_worker_status(db)
+    
+    if should_run is not None:
+        llm_worker_status.should_run = should_run
+        if should_run and not llm_worker_status.is_running:
+            llm_worker_status.started_at = datetime.now(timezone.utc)
+        elif not should_run and llm_worker_status.is_running:
+            llm_worker_status.stopped_at = datetime.now(timezone.utc)
+    
+    if is_running is not None:
+        llm_worker_status.is_running = is_running
+        if is_running:
+            llm_worker_status.started_at = datetime.now(timezone.utc)
+        else:
+            llm_worker_status.stopped_at = datetime.now(timezone.utc)
+    
+    if heartbeat:
+        llm_worker_status.last_heartbeat = datetime.now(timezone.utc)
+    
+    db.commit()
+    db.refresh(llm_worker_status)
+    return llm_worker_status
 
 
 # Dashboard stats

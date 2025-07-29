@@ -129,6 +129,54 @@ class OpenRouterService:
             
             return prompt
     
+    async def rewrite_text_with_custom_prompt(self, original_text: str, custom_prompt: str) -> Optional[str]:
+        """Rewrite text using OpenRouter API with a custom prompt template."""
+        if not original_text or not original_text.strip() or not custom_prompt or not custom_prompt.strip():
+            return None
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers=self.headers,
+                    json={
+                        "model": self.model,
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": "Ты профессиональный редактор контента. Твоя задача - переписать текст согласно предоставленному промпту, сохранив важную информацию и создав качественный контент."
+                            },
+                            {
+                                "role": "user",
+                                "content": custom_prompt
+                            }
+                        ],
+                        "max_tokens": 1000,
+                        "temperature": 0.7,
+                        "top_p": 0.9
+                    }
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if "choices" in data and len(data["choices"]) > 0:
+                        rewritten_text = data["choices"][0]["message"]["content"].strip()
+                        logger.info(f"Successfully rewrote text with custom prompt: {len(original_text)} -> {len(rewritten_text)} chars")
+                        return rewritten_text
+                    else:
+                        logger.error(f"No choices in OpenRouter response: {data}")
+                        return None
+                else:
+                    logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                    return None
+                    
+        except httpx.TimeoutException:
+            logger.error("OpenRouter API timeout")
+            return None
+        except Exception as e:
+            logger.error(f"Error rewriting text with custom prompt: {str(e)}")
+            return None
+    
     async def improve_text_with_prompt(self, original_text: str, user_prompt: str) -> Optional[str]:
         """Improve text using OpenRouter API with custom user prompt."""
         if not original_text or not original_text.strip() or not user_prompt or not user_prompt.strip():

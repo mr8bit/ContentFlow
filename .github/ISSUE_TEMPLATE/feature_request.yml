@@ -1,0 +1,84 @@
+name: Feature Request
+description: Предложить новую функцию для Auto Poster Bot
+title: "[FEATURE] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за предложение новой функции! Пожалуйста, заполните форму ниже.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема
+      description: Связана ли ваша функция с проблемой? Опишите её.
+      placeholder: Меня расстраивает, когда...
+    validations:
+      required: false
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+      description: Опишите решение, которое вы хотели бы видеть
+      placeholder: Я хотел бы...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+      description: Опишите альтернативные решения, которые вы рассматривали
+      placeholder: Альтернативным решением могло бы быть...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      description: Какой компонент должен быть изменен?
+      options:
+        - Frontend (React)
+        - Backend API
+        - Scrapper Service
+        - Publisher Service
+        - LLM Worker
+        - Database
+        - Docker/Infrastructure
+        - Documentation
+        - New Component
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Приоритет
+      description: Насколько важна эта функция?
+      options:
+        - Critical (блокирует работу)
+        - High (очень важно)
+        - Medium (было бы хорошо иметь)
+        - Low (nice to have)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: implementation
+    attributes:
+      label: Готовность к реализации
+      description: Готовы ли вы помочь с реализацией?
+      options:
+        - label: Я готов работать над этой функцией
+        - label: Я могу помочь с тестированием
+        - label: Я могу помочь с документацией
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация о функции
+      placeholder: Добавьте любую другую информацию...

@@ -8,16 +8,16 @@ import { Clock, Hash, Calendar, CheckCircle, ExternalLink } from 'lucide-react';
 
 export const PostMetadata = React.memo<PostMetadataProps>(({ post }) => {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Информация о посте */}
-      <div className="bg-gradient-to-br from-card to-muted/20 rounded-xl border p-6 shadow-sm">
-        <h3 className="text-base font-semibold mb-4 flex items-center gap-3">
+      <div className="bg-gradient-to-br from-card to-muted/20 rounded-xl border p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-3">
           <div className="p-2 bg-blue-500/10 rounded-lg">
             <Hash className="h-5 w-5 text-blue-500" />
           </div>
           Информация о посте
         </h3>
-        <div className="space-y-4 text-sm">
+        <div className="space-y-3 sm:space-y-4 text-sm">
           <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
             <span className="text-muted-foreground font-medium flex items-center gap-2">
               <Hash className="h-4 w-4" />
@@ -63,14 +63,14 @@ export const PostMetadata = React.memo<PostMetadataProps>(({ post }) => {
       </div>
 
       {/* Источник */}
-      <div className="bg-gradient-to-br from-card to-muted/20 rounded-xl border p-6 shadow-sm">
-        <h3 className="text-base font-semibold mb-4 flex items-center gap-3">
+      <div className="bg-gradient-to-br from-card to-muted/20 rounded-xl border p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-3">
           <div className="p-2 bg-green-500/10 rounded-lg">
             <ExternalLink className="h-5 w-5 text-green-500" />
           </div>
           Источник
         </h3>
-        <div className="space-y-4 text-sm">
+        <div className="space-y-3 sm:space-y-4 text-sm">
           {post.source_channel && (
             <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
               <span className="text-muted-foreground font-medium flex items-center gap-2">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, RefreshCw, CheckCircle, X, Radio, Hash, Clock, Send } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useTranslation } from 'react-i18next';
 import { sourceChannelsAPI, targetChannelsAPI, SourceChannel, TargetChannel, SourceChannelCreate, TargetChannelCreate } from '../services/api';
 import {
   Card,
@@ -31,6 +32,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
 } from '../components/ui/index';
 
 type ChannelType = 'source' | 'target';
@@ -52,6 +54,7 @@ interface TargetChannelDialogProps {
 }
 
 function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: SourceChannelDialogProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<SourceChannelCreate>({
     channel_id: '',
     channel_name: '',
@@ -74,7 +77,7 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
     }
   }, [channel]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     onSubmit(formData);
   };
@@ -96,15 +99,15 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
         <DialogHeader className="px-1 sm:px-0">
           <DialogTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
             <Hash className="h-4 w-4 sm:h-5 sm:w-5" />
-            {channel ? 'Редактировать канал-источник' : 'Добавить канал-источник'}
+            {channel ? t('channels.editSourceChannel') : t('channels.addSourceChannel')}
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            {channel ? 'Изменить настройки канала-источника' : 'Добавить новый канал-источник для мониторинга'}
+            {channel ? t('channels.editSourceChannelDesc') : t('channels.addSourceChannelDesc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 px-1 sm:px-0">
           <div className="space-y-1.5 sm:space-y-2">
-            <Label htmlFor="channel_id" className="text-xs sm:text-sm">ID канала</Label>
+            <Label htmlFor="channel_id" className="text-xs sm:text-sm">{t('channels.channelId')}</Label>
             <Input
               id="channel_id"
               placeholder="@channel_name или -1001234567890"
@@ -115,14 +118,14 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
               className="text-xs sm:text-sm h-8 sm:h-10"
             />
             <p className="text-xs text-muted-foreground">
-              Например: @channel_name или -1001234567890
+              {t('channels.channelIdExample')}
             </p>
           </div>
           <div className="space-y-1.5 sm:space-y-2">
-            <Label htmlFor="channel_name" className="text-xs sm:text-sm">Название канала</Label>
+            <Label htmlFor="channel_name" className="text-xs sm:text-sm">{t('channels.channelName')}</Label>
             <Input
               id="channel_name"
-              placeholder="Мой канал"
+              placeholder={t('channels.channelNamePlaceholder')}
               value={formData.channel_name}
               onChange={(e) => setFormData({ ...formData, channel_name: e.target.value })}
               required
@@ -131,7 +134,7 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
             />
           </div>
           <div className="space-y-1.5 sm:space-y-2">
-            <Label htmlFor="check_interval" className="text-xs sm:text-sm">Интервал проверки (секунды)</Label>
+            <Label htmlFor="check_interval" className="text-xs sm:text-sm">{t('channels.checkInterval')}</Label>
             <Input
               id="check_interval"
               type="number"
@@ -144,7 +147,7 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
               className="text-xs sm:text-sm h-8 sm:h-10"
             />
             <p className="text-xs text-muted-foreground">
-              От 5 до 3600 секунд
+              {t('channels.checkIntervalRange')}
             </p>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 px-0">
@@ -155,10 +158,10 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
               disabled={loading}
               className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 order-2 sm:order-1"
             >
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 order-1 sm:order-2">
-              {loading ? 'Сохранение...' : (channel ? 'Сохранить' : 'Добавить')}
+              {loading ? t('common.saving') : (channel ? t('common.save') : t('common.add'))}
             </Button>
           </DialogFooter>
         </form>
@@ -168,9 +171,16 @@ function SourceChannelDialog({ open, onClose, channel, onSubmit, loading }: Sour
 }
 
 function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: TargetChannelDialogProps) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<TargetChannelCreate>({
     channel_id: '',
     channel_name: '',
+    channel_username: '',
+    description: '',
+    rewrite_prompt: '',
+    tags: [],
+    classification_threshold: 80,
+    auto_publish_enabled: false,
   });
 
   useEffect(() => {
@@ -178,16 +188,28 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
       setFormData({
         channel_id: channel.channel_id,
         channel_name: channel.channel_name,
+        channel_username: channel.channel_username || '',
+        description: channel.description || '',
+        rewrite_prompt: channel.rewrite_prompt || '',
+        tags: channel.tags || [],
+        classification_threshold: channel.classification_threshold || 80,
+        auto_publish_enabled: channel.auto_publish_enabled || false,
       });
     } else {
       setFormData({
         channel_id: '',
         channel_name: '',
+        channel_username: '',
+        description: '',
+        rewrite_prompt: '',
+        tags: [],
+        classification_threshold: 80,
+        auto_publish_enabled: false,
       });
     }
   }, [channel]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
     onSubmit(formData);
   };
@@ -198,6 +220,12 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
       setFormData({
         channel_id: '',
         channel_name: '',
+        channel_username: '',
+        description: '',
+        rewrite_prompt: '',
+        tags: [],
+        classification_threshold: 80,
+        auto_publish_enabled: false,
       });
     }
   };
@@ -208,18 +236,18 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
         <DialogHeader className="px-1 sm:px-0">
           <DialogTitle className="flex items-center gap-1.5 sm:gap-2 text-base sm:text-lg">
             <Send className="h-4 w-4 sm:h-5 sm:w-5" />
-            {channel ? 'Редактировать целевой канал' : 'Добавить целевой канал'}
+            {channel ? t('channels.editTargetChannel') : t('channels.addTargetChannel')}
           </DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
-            {channel ? 'Изменить настройки целевого канала' : 'Добавить новый канал для публикации постов'}
+            {channel ? t('channels.editTargetChannelDesc') : t('channels.addTargetChannelDesc')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 px-1 sm:px-0">
           <div className="space-y-1.5 sm:space-y-2">
-            <Label htmlFor="target_channel_id" className="text-xs sm:text-sm">ID канала</Label>
+            <Label htmlFor="target_channel_id" className="text-xs sm:text-sm">{t('channels.channelId')}</Label>
             <Input
               id="target_channel_id"
-              placeholder="@channel_name или -1001234567890"
+              placeholder={t('channels.channelIdExample')}
               value={formData.channel_id}
               onChange={(e) => setFormData({ ...formData, channel_id: e.target.value })}
               required
@@ -227,20 +255,104 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
               className="text-xs sm:text-sm h-8 sm:h-10"
             />
             <p className="text-xs text-muted-foreground">
-              Например: @channel_name или -1001234567890
+              {t('channels.channelIdExample')}
             </p>
           </div>
           <div className="space-y-1.5 sm:space-y-2">
-            <Label htmlFor="target_channel_name" className="text-xs sm:text-sm">Название канала</Label>
+            <Label htmlFor="target_channel_name" className="text-xs sm:text-sm">{t('channels.channelName')}</Label>
             <Input
               id="target_channel_name"
-              placeholder="Мой канал"
+              placeholder={t('channels.channelNamePlaceholder')}
               value={formData.channel_name}
               onChange={(e) => setFormData({ ...formData, channel_name: e.target.value })}
               required
               disabled={loading}
               className="text-xs sm:text-sm h-8 sm:h-10"
             />
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="target_channel_username" className="text-xs sm:text-sm">{t('channels.channelUsername')}</Label>
+            <Input
+              id="target_channel_username"
+              placeholder={t('channels.channelUsernamePlaceholder')}
+              value={formData.channel_username}
+              onChange={(e) => setFormData({ ...formData, channel_username: e.target.value })}
+              disabled={loading}
+              className="text-xs sm:text-sm h-8 sm:h-10"
+            />
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="target_description" className="text-xs sm:text-sm">{t('channels.channelDescription')}</Label>
+            <Textarea
+              id="target_description"
+              placeholder={t('channels.channelDescriptionPlaceholder')}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              disabled={loading}
+              className="text-xs sm:text-sm min-h-[120px] resize-y"
+            />
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="target_rewrite_prompt" className="text-xs sm:text-sm">{t('channels.rewritePrompt')}</Label>
+            <Textarea
+              id="target_rewrite_prompt"
+              placeholder={t('channels.rewritePromptPlaceholder')}
+              value={formData.rewrite_prompt}
+              onChange={(e) => setFormData({ ...formData, rewrite_prompt: e.target.value })}
+              disabled={loading}
+              className="text-xs sm:text-sm min-h-[100px] resize-y"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('channels.rewritePromptDesc')}
+            </p>
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="target_tags" className="text-xs sm:text-sm">{t('channels.tags')}</Label>
+            <Input
+              id="target_tags"
+              placeholder={t('channels.tagsPlaceholder')}
+              value={formData.tags?.join(', ') || ''}
+              onChange={(e) => {
+                const tagsString = e.target.value;
+                const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
+                setFormData({ ...formData, tags });
+              }}
+              disabled={loading}
+              className="text-xs sm:text-sm h-8 sm:h-10"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('channels.tagsDesc')}
+            </p>
+          </div>
+          <div className="space-y-1.5 sm:space-y-2">
+            <Label htmlFor="target_threshold" className="text-xs sm:text-sm">{t('channels.classificationThreshold')}</Label>
+            <Input
+              id="target_threshold"
+              type="number"
+              min="50"
+              max="100"
+              placeholder="80"
+              value={formData.classification_threshold}
+              onChange={(e) => setFormData({ ...formData, classification_threshold: parseInt(e.target.value) || 80 })}
+              disabled={loading}
+              className="text-xs sm:text-sm h-8 sm:h-10"
+            />
+            <p className="text-xs text-muted-foreground">
+              {t('channels.classificationThresholdDesc')}
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              id="target_auto_publish"
+              type="checkbox"
+              checked={formData.auto_publish_enabled}
+              onChange={(e) => setFormData({ ...formData, auto_publish_enabled: e.target.checked })}
+              disabled={loading}
+              className="h-4 w-4"
+            />
+            <Label htmlFor="target_auto_publish" className="text-xs sm:text-sm">
+              {t('channels.autoPublish')}
+            </Label>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0 px-0">
             <Button
@@ -250,10 +362,10 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
               disabled={loading}
               className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 order-2 sm:order-1"
             >
-              Отмена
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading} className="w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9 order-1 sm:order-2">
-              {loading ? 'Сохранение...' : (channel ? 'Сохранить' : 'Добавить')}
+              {loading ? t('common.saving') : (channel ? t('common.save') : t('common.add'))}
             </Button>
           </DialogFooter>
         </form>
@@ -263,6 +375,7 @@ function TargetChannelDialog({ open, onClose, channel, onSubmit, loading }: Targ
 }
 
 export default function Channels() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ChannelType>('source');
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
   const [targetDialogOpen, setTargetDialogOpen] = useState(false);
@@ -299,15 +412,15 @@ export default function Channels() {
         setSourceDialogOpen(false);
         setError('');
         toast({
-          title: "Канал-источник добавлен",
-          description: "Канал-источник успешно добавлен",
+          title: t('channels.sourceChannelAdded'),
+          description: t('channels.sourceChannelAddedDesc'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при создании канала');
+        setError(err.response?.data?.detail || t('channels.createError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при создании канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.createError'),
           variant: "destructive",
         });
       },
@@ -324,15 +437,15 @@ export default function Channels() {
         setEditingSourceChannel(undefined);
         setError('');
         toast({
-          title: "Канал-источник обновлен",
-          description: "Настройки канала успешно сохранены",
+          title: t('channels.sourceChannelUpdated'),
+          description: t('channels.channelSettingsSaved'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при обновлении канала');
+        setError(err.response?.data?.detail || t('channels.updateError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при обновлении канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.updateError'),
           variant: "destructive",
         });
       },
@@ -345,15 +458,15 @@ export default function Channels() {
       onSuccess: () => {
         queryClient.invalidateQueries('source-channels');
         toast({
-          title: "Канал-источник удален",
-          description: "Канал-источник успешно удален",
+          title: t('channels.sourceChannelDeleted'),
+          description: t('channels.sourceChannelDeletedDesc'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при удалении канала');
+        setError(err.response?.data?.detail || t('channels.deleteError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при удалении канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.deleteError'),
           variant: "destructive",
         });
       },
@@ -369,15 +482,15 @@ export default function Channels() {
         setTargetDialogOpen(false);
         setError('');
         toast({
-          title: "Целевой канал добавлен",
-          description: "Целевой канал успешно добавлен",
+          title: t('channels.targetChannelAdded'),
+          description: t('channels.targetChannelAddedDesc'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при создании канала');
+        setError(err.response?.data?.detail || t('channels.createError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при создании канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.createError'),
           variant: "destructive",
         });
       },
@@ -394,15 +507,15 @@ export default function Channels() {
         setEditingTargetChannel(undefined);
         setError('');
         toast({
-          title: "Целевой канал обновлен",
-          description: "Настройки канала успешно сохранены",
+          title: t('channels.targetChannelUpdated'),
+          description: t('channels.channelSettingsSaved'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при обновлении канала');
+        setError(err.response?.data?.detail || t('channels.updateError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при обновлении канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.updateError'),
           variant: "destructive",
         });
       },
@@ -415,15 +528,15 @@ export default function Channels() {
       onSuccess: () => {
         queryClient.invalidateQueries('target-channels');
         toast({
-          title: "Целевой канал удален",
-          description: "Целевой канал успешно удален",
+          title: t('channels.targetChannelDeleted'),
+          description: t('channels.targetChannelDeletedDesc'),
         });
       },
       onError: (err: any) => {
-        setError(err.response?.data?.detail || 'Ошибка при удалении канала');
+        setError(err.response?.data?.detail || t('channels.deleteError'));
         toast({
-          title: "Ошибка",
-          description: err.response?.data?.detail || 'Ошибка при удалении канала',
+          title: t('common.error'),
+          description: err.response?.data?.detail || t('channels.deleteError'),
           variant: "destructive",
         });
       },
@@ -444,7 +557,7 @@ export default function Channels() {
   };
 
   const handleDeleteSource = (id: number) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот канал-источник?')) {
+    if (window.confirm(t('channels.confirmDeleteSource'))) {
       deleteSourceMutation.mutate(id);
     }
   };
@@ -470,7 +583,7 @@ export default function Channels() {
   };
 
   const handleDeleteTarget = (id: number) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот целевой канал?')) {
+    if (window.confirm(t('channels.confirmDeleteTarget'))) {
       deleteTargetMutation.mutate(id);
     }
   };
@@ -503,9 +616,9 @@ export default function Channels() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Управление каналами</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('channels.title')}</h1>
           <p className="text-sm sm:text-base text-muted-foreground">
-            Настройка каналов-источников и целевых каналов для публикации
+            {t('channels.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -523,7 +636,7 @@ export default function Channels() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Обновить список</p>
+                <p>{t('common.refresh')}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -533,9 +646,9 @@ export default function Channels() {
           >
             <Plus className="h-4 w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">
-              {activeTab === 'source' ? 'Добавить источник' : 'Добавить целевой'}
+              {activeTab === 'source' ? t('channels.addSource') : t('channels.addTarget')}
             </span>
-            <span className="sm:hidden">Добавить</span>
+            <span className="sm:hidden">{t('common.add')}</span>
           </Button>
         </div>
       </div>
@@ -550,8 +663,8 @@ export default function Channels() {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="source" className="flex items-center gap-2">
             <Radio className="h-4 w-4" />
-            <span className="hidden sm:inline">Каналы-источники</span>
-            <span className="sm:hidden">Источники</span>
+            <span className="hidden sm:inline">{t('channels.sourceChannels')}</span>
+            <span className="sm:hidden">{t('channels.sources')}</span>
             {sourceChannels?.length > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 {sourceChannels.length}
@@ -560,8 +673,8 @@ export default function Channels() {
           </TabsTrigger>
           <TabsTrigger value="target" className="flex items-center gap-2">
             <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Целевые каналы</span>
-            <span className="sm:hidden">Целевые</span>
+            <span className="hidden sm:inline">{t('channels.targetChannels')}</span>
+            <span className="sm:hidden">{t('channels.targets')}</span>
             {targetChannels?.length > 0 && (
               <Badge variant="secondary" className="ml-1 text-xs">
                 {targetChannels.length}
@@ -587,23 +700,23 @@ export default function Channels() {
             </div>
           ) : (
             <>
-              {sourceChannels?.length === 0 ? (
+              {!sourceChannels || !Array.isArray(sourceChannels) || sourceChannels.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
                     <Radio className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
-                    <h3 className="text-base sm:text-lg font-semibold mb-2">Нет каналов-источников</h3>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2">{t('channels.noSourceChannels')}</h3>
                     <p className="text-sm sm:text-base text-muted-foreground text-center mb-4 sm:mb-6">
-                      Добавьте первый канал-источник для начала мониторинга постов
+                      {t('channels.noSourceChannelsDesc')}
                     </p>
                     <Button onClick={handleCreateSource} className="text-xs sm:text-sm">
                       <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-                      Добавить канал-источник
+                      {t('channels.addSourceChannel')}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {sourceChannels?.map((channel: SourceChannel) => (
+                  {sourceChannels.map((channel: SourceChannel) => (
                     <Card key={channel.id} className="hover:shadow-md transition-shadow">
                       <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                         <div className="flex items-start justify-between gap-2">
@@ -617,8 +730,8 @@ export default function Channels() {
                             ) : (
                               <X className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
                             )}
-                            <span className="hidden sm:inline">{channel.is_active ? 'Активен' : 'Неактивен'}</span>
-                            <span className="sm:hidden">{channel.is_active ? 'Акт.' : 'Неакт.'}</span>
+                            <span className="hidden sm:inline">{channel.is_active ? t('common.active') : t('common.inactive')}</span>
+                            <span className="sm:hidden">{channel.is_active ? t('common.activeShort') : t('common.inactiveShort')}</span>
                           </Badge>
                         </div>
                         <CardDescription className="flex items-center gap-1 text-xs sm:text-sm">
@@ -629,18 +742,18 @@ export default function Channels() {
                       <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
                         <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                           <Clock className="h-3 w-3 flex-shrink-0" />
-                          <span>Проверка каждые {formatInterval(channel.check_interval)}</span>
+                          <span>{t('channels.checkEvery')} {formatInterval(channel.check_interval)}</span>
                         </div>
                         
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div>
-                            <p className="text-muted-foreground">Всего постов</p>
+                            <p className="text-muted-foreground">{t('channels.totalPosts')}</p>
                             <p className="font-semibold">{(channel as any).posts_count || 0}</p>
                           </div>
                           <div>
-                            <p className="text-muted-foreground">Последняя проверка</p>
+                            <p className="text-muted-foreground">{t('channels.lastCheck')}</p>
                             <p className="font-semibold text-xs sm:text-sm">
-                              {channel.last_checked ? new Date(channel.last_checked).toLocaleString() : 'Никогда'}
+                              {channel.last_checked ? new Date(channel.last_checked).toLocaleString() : t('common.never')}
                             </p>
                           </div>
                         </div>
@@ -656,8 +769,8 @@ export default function Channels() {
                             className="flex-1 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                           >
                             <Edit className="h-3 w-3 mr-1" />
-                            <span className="hidden sm:inline">Изменить</span>
-                            <span className="sm:hidden">Изм.</span>
+                            <span className="hidden sm:inline">{t('common.edit')}</span>
+                            <span className="sm:hidden">{t('common.editShort')}</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -667,8 +780,8 @@ export default function Channels() {
                             className="flex-1 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
-                            <span className="hidden sm:inline">Удалить</span>
-                            <span className="sm:hidden">Удал.</span>
+                            <span className="hidden sm:inline">{t('common.delete')}</span>
+                            <span className="sm:hidden">{t('common.deleteShort')}</span>
                           </Button>
                         </div>
                       </CardContent>
@@ -697,23 +810,23 @@ export default function Channels() {
             </div>
           ) : (
             <>
-              {targetChannels?.length === 0 ? (
+              {!targetChannels || !Array.isArray(targetChannels) || targetChannels.length === 0 ? (
                 <Card>
                   <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
                     <Send className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
-                    <h3 className="text-base sm:text-lg font-semibold mb-2">Нет целевых каналов</h3>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2">{t('channels.noTargetChannels')}</h3>
                     <p className="text-sm sm:text-base text-muted-foreground text-center mb-4 sm:mb-6">
-                      Добавьте первый целевой канал для публикации одобренных постов
+                      {t('channels.noTargetChannelsDesc')}
                     </p>
                     <Button onClick={handleCreateTarget} className="text-xs sm:text-sm">
                       <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-                      Добавить целевой канал
+                      {t('channels.addTargetChannel')}
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
                 <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {targetChannels?.map((channel: TargetChannel) => (
+                  {targetChannels.map((channel: TargetChannel) => (
                     <Card key={channel.id} className="hover:shadow-md transition-shadow">
                       <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
                         <div className="flex items-start justify-between gap-2">
@@ -727,8 +840,8 @@ export default function Channels() {
                             ) : (
                               <X className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
                             )}
-                            <span className="hidden sm:inline">{channel.is_active ? 'Активен' : 'Неактивен'}</span>
-                            <span className="sm:hidden">{channel.is_active ? 'Акт.' : 'Неакт.'}</span>
+                            <span className="hidden sm:inline">{channel.is_active ? t('common.active') : t('common.inactive')}</span>
+                            <span className="sm:hidden">{channel.is_active ? t('common.activeShort') : t('common.inactiveShort')}</span>
                           </Badge>
                         </div>
                         <CardDescription className="flex items-center gap-1 text-xs sm:text-sm">
@@ -739,12 +852,12 @@ export default function Channels() {
                       <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6 pb-3 sm:pb-6">
                         <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
                           <Send className="h-3 w-3 flex-shrink-0" />
-                          <span>Канал для публикации одобренных постов</span>
+                          <span>{t('channels.targetChannelDesc')}</span>
                         </div>
                         
                         {channel.created_at && (
                           <div className="text-xs sm:text-sm">
-                            <p className="text-muted-foreground">Добавлен</p>
+                            <p className="text-muted-foreground">{t('channels.added')}</p>
                             <p className="font-semibold">
                               {new Date(channel.created_at).toLocaleString('ru-RU')}
                             </p>
@@ -762,8 +875,8 @@ export default function Channels() {
                             className="flex-1 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                           >
                             <Edit className="h-3 w-3 mr-1" />
-                            <span className="hidden sm:inline">Изменить</span>
-                            <span className="sm:hidden">Изм.</span>
+                            <span className="hidden sm:inline">{t('common.edit')}</span>
+                            <span className="sm:hidden">{t('common.editShort')}</span>
                           </Button>
                           <Button
                             variant="outline"
@@ -773,8 +886,8 @@ export default function Channels() {
                             className="flex-1 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
                           >
                             <Trash2 className="h-3 w-3 mr-1" />
-                            <span className="hidden sm:inline">Удалить</span>
-                            <span className="sm:hidden">Удал.</span>
+                            <span className="hidden sm:inline">{t('common.delete')}</span>
+                            <span className="sm:hidden">{t('common.deleteShort')}</span>
                           </Button>
                         </div>
                       </CardContent>
