@@ -7,7 +7,7 @@
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-00a393.svg)](https://fastapi.tiangolo.com/)
   [![React](https://img.shields.io/badge/React-18+-61dafb.svg)](https://reactjs.org/)
   [![Docker](https://img.shields.io/badge/Docker-ready-2496ed.svg)](https://www.docker.com/)
-  
+
 <div align="center">
   <img src="assets/logo-square.png" alt="ContentFlow Logo" width="120" height="120">
   
@@ -64,18 +64,6 @@ docker-compose up -d
 4. **Open web interface**
 ```
 http://localhost:3000
-```
-
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    A[Frontend React] --> B[Backend FastAPI]
-    B --> C[PostgreSQL]
-    B --> D[Redis]
-    B --> E[Scrapper]
-    B --> F[Publisher]
-    B --> G[LLM Worker]
 ```
 
 ## 📝 Configuration
