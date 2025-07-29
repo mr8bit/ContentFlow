@@ -83,20 +83,13 @@ export default function Layout({ children }: LayoutProps) {
         <div className="relative flex items-center gap-4">
           {/* Enhanced logo with multiple layers */}
           <div className="relative group">
-            {/* Outer glow ring */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/60 to-secondary rounded-2xl blur-sm opacity-75 group-hover:opacity-100 transition-opacity duration-300" />
-            
-            {/* Main logo container */}
-            <div className="relative p-3 bg-gradient-to-br from-primary via-primary/90 to-primary/70 rounded-2xl shadow-xl shadow-primary/25 group-hover:shadow-primary/40 transition-all duration-300 group-hover:scale-105">
-              {/* Inner highlight */}
-              <div className="absolute inset-1 bg-gradient-to-br from-white/20 to-transparent rounded-xl" />
-              
-              {/* Icon */}
-              <Zap className="relative h-6 w-6 text-primary-foreground drop-shadow-sm" />
-              
-              {/* Animated pulse effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </div>
+            {/* Logo Image */}
+               <img 
+                 src="/logo.png" 
+                 alt="ContentFlow Logo" 
+                 style={{ transform: 'scale(1.5)' }}
+                 className="relative h-10 w-10 object-cover rounded-lg drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+               />
             
             {/* Floating particles effect */}
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-gradient-to-br from-secondary to-secondary/80 rounded-full opacity-60 animate-pulse" />
