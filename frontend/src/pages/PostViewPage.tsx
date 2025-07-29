@@ -1,14 +1,18 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { postsAPI } from '../services/api';
 import { Button } from '../components/ui';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { PostContent } from '../components/posts/PostDialog/PostContent';
+import { useToast } from '../hooks/use-toast';
+import { Post } from '../types';
 
 export const PostViewPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   
   // Fetch post data
   const { data: post, isLoading, error } = useQuery(
@@ -17,6 +21,32 @@ export const PostViewPage = () => {
     { enabled: !!id }
   );
 
+  // Process post mutation
+  const processPostMutation = useMutation({
+    mutationFn: (postId: number) => postsAPI.process(postId),
+    onMutate: () => {
+      toast({
+        title: 'Обработка поста',
+        description: 'Пост отправлен на обработку ИИ...',
+      });
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['post', id] });
+      toast({
+        title: 'Пост обработан',
+        description: 'Пост успешно обработан с помощью ИИ',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Ошибка обработки',
+        description: error.response?.data?.detail || 'Не удалось обработать пост',
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Handlers
   const handleBack = () => {
     navigate('/posts');
@@ -24,6 +54,10 @@ export const PostViewPage = () => {
 
   const handleClose = () => {
     navigate('/posts');
+  };
+
+  const handleProcess = (post: Post) => {
+    processPostMutation.mutate(post.id);
   };
 
   if (isLoading) {
@@ -65,7 +99,7 @@ export const PostViewPage = () => {
       
       {/* Content */}
       <div className="w-full">
-        <PostContent post={post} onClose={handleClose} />
+        <PostContent post={post} onClose={handleClose} onProcess={handleProcess} />
       </div>
     </div>
   );

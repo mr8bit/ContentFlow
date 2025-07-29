@@ -65,6 +65,7 @@ export interface TargetChannelCreate {
 
 export interface PostUpdate {
   text?: string;
+  original_text?: string;
   processed_text?: string;
   admin_notes?: string;
 }

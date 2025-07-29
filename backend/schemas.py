@@ -118,6 +118,7 @@ class PostCreateFromFrontend(BaseModel):
 
 
 class PostUpdate(BaseModel):
+    original_text: Optional[str] = None
     processed_text: Optional[str] = None
     status: Optional[PostStatus] = None
     target_channel_id: Optional[int] = None

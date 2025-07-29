@@ -36,6 +36,18 @@ export function usePostDialog(post: Post | null, onClose: () => void) {
     },
   });
 
+  const updateOriginalTextMutation = useMutation({
+    mutationFn: ({ id, original_text }: { id: number; original_text: string }) => 
+      postsAPI.update(id, { original_text }),
+    onSuccess: () => {
+      // toast.success('Оригинальный текст обновлен');
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+    },
+    onError: (error: any) => {
+      // toast.error(error.response?.data?.detail || 'Ошибка при обновлении оригинального текста');
+    },
+  });
+
   const handleImproveText = useCallback((): void => {
     const textToImprove = post?.processed_text || post?.original_text;
     if (!textToImprove) return;
@@ -71,5 +83,6 @@ export function usePostDialog(post: Post | null, onClose: () => void) {
     handleCloseFullscreen,
     handleCancelImprovement,
     updatePostMutation,
+    updateOriginalTextMutation,
   };
 }

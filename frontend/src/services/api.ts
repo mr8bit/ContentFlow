@@ -147,6 +147,7 @@ export interface PostUpdate {
   processed_text?: string;
   admin_notes?: string;
   target_channel_id?: number;
+  original_text?: string;
 }
 
 export interface DashboardStats {
@@ -290,6 +291,8 @@ export const postsAPI = {
     apiClient.post<{ improved_text: string }>('/posts/improve-text-with-prompt', { text, prompt, model_id: modelId }),
   classify: (id: number) =>
     apiClient.post<Post>(`/posts/${id}/classify`),
+  process: (id: number) =>
+    apiClient.post<Post>(`/posts/${id}/process`),
 };
 
 export const settingsAPI = {

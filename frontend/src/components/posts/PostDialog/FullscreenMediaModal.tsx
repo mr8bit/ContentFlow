@@ -100,6 +100,7 @@ export const FullscreenMediaModal = React.memo<FullscreenMediaModalProps>(({ med
             className="max-w-full max-h-full object-contain"
             controls
             autoPlay
+            poster={mediaUrl}
             onClick={handleVideoClick}
             onMouseDown={handleVideoInteraction}
             onMouseUp={handleVideoInteraction}

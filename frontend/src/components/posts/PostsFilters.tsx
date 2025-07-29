@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, Tabs, TabsList, TabsTrigger, Badge } from '../ui';
 import { Post } from '../../types';
 import { FileText, Clock, Cog, CheckCircle, Calendar, Send, XCircle } from 'lucide-react';
+import { usePostsStatsAPI } from '../../hooks/useFilteredPostsAPI';
 
 interface PostsFiltersProps {
   statusFilters: readonly string[];
@@ -9,6 +10,7 @@ interface PostsFiltersProps {
   selectedTab: number;
   posts: Post[] | undefined;
   onTabChange: (tabIndex: number) => void;
+  advancedFilters?: any; // Filters from advanced filters component
 }
 
 const statusIcons: Record<string, any> = {
@@ -37,10 +39,19 @@ export function PostsFilters({
   selectedTab,
   posts,
   onTabChange,
+  advancedFilters = {},
 }: PostsFiltersProps): JSX.Element {
+  // Get real statistics from API
+  const { stats, isLoading } = usePostsStatsAPI(advancedFilters);
+
   const getPostCount = (status: string): number => {
-    if (!posts) return 0;
-    return status === 'all' ? posts.length : posts.filter(p => p.status === status).length;
+    if (isLoading) return 0;
+    
+    if (status === 'all') {
+      return stats.total;
+    }
+    
+    return stats[status as keyof typeof stats] || 0;
   };
 
   return (
@@ -96,7 +107,7 @@ export function PostsFilters({
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >
-                    {count}
+                    {isLoading ? '...' : count}
                   </Badge>
                 </TabsTrigger>
               );

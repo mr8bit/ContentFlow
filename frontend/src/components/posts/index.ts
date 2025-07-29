@@ -12,4 +12,5 @@ export { PostDialog } from './PostDialog/index';
 export { EditDialog } from './EditDialog';
 export { ApproveDialog } from './ApproveDialog';
 export { ScheduleDialog } from './ScheduleDialog';
+export { PublishDialog } from './PublishDialog';
 export { Pagination } from './Pagination';

@@ -598,6 +598,47 @@ async def get_pending_posts(
     return crud.get_pending_posts(db, limit=limit)
 
 
+@app.post("/api/posts/{post_id}/process", response_model=Post)
+async def process_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Process post using LLM with target channel prompt"""
+    # Get the post
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if post has AI categorization info
+    if not post.target_channel_id:
+        raise HTTPException(status_code=400, detail="Post must have target channel from AI categorization")
+    
+    # Check if post has original text
+    if not post.original_text or not post.original_text.strip():
+        raise HTTPException(status_code=400, detail="Post must have original text to process")
+    
+    try:
+        # Import LLM worker functionality
+        from workers.llm_worker import LLMWorker
+        
+        # Create LLM worker instance
+        llm_worker = LLMWorker()
+        
+        # Process the post using the existing rewrite function
+        await llm_worker.rewrite_post_for_target_channel(db, post)
+        
+        # Refresh post to get updated data
+        db.refresh(post)
+        
+        logger.info(f"Post {post_id} processed successfully by user {current_user.id}")
+        return post
+        
+    except Exception as e:
+        logger.error(f"Error processing post {post_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to process post: {str(e)}")
+
+
 @app.post("/api/posts/improve-text")
 async def improve_text(
     request: dict = Body(...),

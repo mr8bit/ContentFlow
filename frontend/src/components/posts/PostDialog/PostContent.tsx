@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent } from '../../ui';
-import { Copy, ExternalLink, Info, Eye, CheckCircle, Send, Calendar, Brain } from 'lucide-react';
+import { Button, Badge, Tabs, TabsList, TabsTrigger, TabsContent, Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../../ui';
+import { Copy, ExternalLink, Info, Eye, CheckCircle, Send, Calendar, Brain, Target, Zap, Cpu } from 'lucide-react';
 import { Post } from '../../../types';
 import { usePostDialog } from './hooks';
 import { getStatusColor, getStatusText } from './utils';
@@ -17,9 +17,10 @@ import { useToast } from '../../../hooks/use-toast';
 interface PostContentProps {
   post: Post;
   onClose: () => void;
+  onProcess?: (post: Post) => void;
 }
 
-export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
+export const PostContent = React.memo<PostContentProps>(({ post, onClose, onProcess }) => {
   const {
     improvedText,
     setImprovedText,
@@ -28,6 +29,7 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
     handleMediaClick,
     handleCloseFullscreen,
     updatePostMutation,
+    updateOriginalTextMutation,
   } = usePostDialog(post, onClose);
   
   const [activeTab, setActiveTab] = useState('preview');
@@ -137,8 +139,93 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
     return null;
   };
 
+  // Функция для отображения информации о LLM классификации
+  const renderLLMClassificationInfo = () => {
+    // Показываем только для обработанных постов
+    if (!['processed', 'approved', 'scheduled', 'published'].includes(post.status)) {
+      return null;
+    }
+
+    // Проверяем наличие данных о классификации
+    if (!post.llm_classification_confidence || !post.target_channel_id || !post.target_channel) {
+      return null;
+    }
+
+    const confidence = post.llm_classification_confidence!;
+    const targetChannel = post.target_channel;
+    
+    // Парсим результат классификации для получения reasoning
+    let reasoning = '';
+    try {
+      if (post.llm_classification_result) {
+        const result = typeof post.llm_classification_result === 'string' 
+          ? JSON.parse(post.llm_classification_result) 
+          : post.llm_classification_result;
+        reasoning = result.reasoning || '';
+      }
+    } catch (e) {
+      console.warn('Failed to parse llm_classification_result:', e);
+    }
+
+    const getConfidenceBadgeColor = (confidence: number) => {
+      if (confidence >= 90) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      if (confidence >= 70) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+    };
+
+    return (
+      <div className="mb-3 p-3 bg-gradient-to-r from-blue-50/30 to-purple-50/30 dark:from-blue-950/10 dark:to-purple-950/10 rounded-md border border-blue-200/20 dark:border-blue-800/20">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Brain className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              ИИ Категоризация
+            </span>
+            <Badge className={`${getConfidenceBadgeColor(confidence)} text-xs px-2 py-1`}>
+              {confidence}%
+            </Badge>
+          </div>
+          
+          <div className="flex items-center gap-2 min-w-0">
+            <Target className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-muted-foreground truncate max-w-32">
+                  {targetChannel.channel_name || targetChannel.channel_username}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Целевой канал: {targetChannel.channel_name || targetChannel.channel_username}</p>
+                <p>Уверенность: {confidence}%</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {targetChannel.auto_publish_enabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Zap className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Автопубликация включена</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        {reasoning && (
+          <div className="mt-2 p-2 bg-white/50 dark:bg-white/5 rounded border border-blue-100 dark:border-blue-800/30">
+            <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Обоснование:</div>
+            <div className="text-sm text-muted-foreground">
+              {reasoning}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <>
+    <TooltipProvider>
       <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -150,6 +237,9 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
             </Badge>
           </div>
         </div>
+        
+        {/* LLM Classification Info */}
+        {renderLLMClassificationInfo()}
         
         {/* Кнопки управления статусом */}
         <div className="flex flex-wrap items-center gap-2 mt-3 p-2 sm:p-3 bg-muted/30 rounded-lg">
@@ -164,6 +254,19 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
             >
               <Brain className="h-4 w-4" />
               {classifyPostMutation.isLoading ? 'Классифицирую...' : 'Классифицировать'}
+            </Button>
+          )}
+          
+          {/* Кнопка "Обработать пост" для постов с AI категоризацией */}
+          {post.llm_classification_result && onProcess && !post.processed_text && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onProcess(post)}
+              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-950"
+            >
+              <Cpu className="h-4 w-4" />
+              Обработать пост
             </Button>
           )}
           
@@ -258,11 +361,14 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       Оригинальный пост
                     </h3>
-                    <TelegramPost 
-                      text={post.original_text || ''} 
-                      type="original" 
-                      post={post} 
-                      onMediaClick={handleMediaClick}
+                    <EditableTextSection
+                      post={post}
+                      text={post.original_text || ''}
+                      type="original"
+                      onSave={(newText) => {
+                        updateOriginalTextMutation.mutate({ id: post.id, original_text: newText });
+                      }}
+                      isLoading={updateOriginalTextMutation.isLoading}
                     />
                   </div>
                   
@@ -322,7 +428,7 @@ export const PostContent = React.memo<PostContentProps>(({ post, onClose }) => {
           onClose={handlePublishDialogClose}
         />
       )}
-    </>
+    </TooltipProvider>
   );
 });
 

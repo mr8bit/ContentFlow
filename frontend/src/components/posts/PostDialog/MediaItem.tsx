@@ -64,6 +64,7 @@ export const MediaItem = React.memo<MediaItemProps>(({
         <video 
           className="w-full h-full object-cover"
           preload="metadata"
+          poster={mediaUrl}
           onError={(e) => {
             e.currentTarget.style.display = 'none';
           }}

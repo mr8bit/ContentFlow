@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, Avatar, AvatarFallback, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Separator } from '../ui';
-import { MoreVertical as MoreIcon, Eye as EyeIcon, Edit as EditIcon, Check as CheckIcon, X as XIcon, Send as SendIcon, Calendar as CalendarIcon, Image as ImageIcon, Video as VideoIcon, File as FileIcon, Clock, User, Play } from 'lucide-react';
+import { MoreVertical as MoreIcon, Eye as EyeIcon, Edit as EditIcon, Check as CheckIcon, X as XIcon, Send as SendIcon, Calendar as CalendarIcon, Image as ImageIcon, Video as VideoIcon, File as FileIcon, Clock, User, Play, Brain, Target, Zap, Cpu } from 'lucide-react';
 import { Post } from '../../types';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -14,6 +14,7 @@ interface PostCardProps {
   onReject: (post: Post) => void;
   onPublish: (post: Post) => void;
   onSchedule: (post: Post) => void;
+  onProcess: (post: Post) => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -65,6 +66,7 @@ export function PostCard({
   onReject,
   onPublish,
   onSchedule,
+  onProcess,
   onImageClick,
 }: PostCardProps): JSX.Element {
   const renderMedia = (): JSX.Element | null => {
@@ -76,13 +78,17 @@ export function PostCard({
     let firstMediaItem: MediaItem | null = null;
     let mediaCount = 0;
 
-    if ('media_list' in media) {
-      // MediaGroup
+    if ('media_list' in media && Array.isArray(media.media_list)) {
+      // MediaGroup - группа медиа файлов
       firstMediaItem = media.media_list[0] || null;
       mediaCount = media.media_list.length;
+    } else if ('type' in media) {
+      // SingleMedia или BackendMedia - одиночный медиа файл
+      firstMediaItem = media as MediaItem;
+      mediaCount = 1;
     } else {
-      // SingleMedia
-      firstMediaItem = media;
+      // Неизвестный формат, попробуем обработать как одиночный файл
+      firstMediaItem = media as MediaItem;
       mediaCount = 1;
     }
 
@@ -143,7 +149,7 @@ export function PostCard({
         )}
         
         {/* Media count badge */}
-        {mediaCount > 1 && (
+        {mediaCount >= 1 && (
           <div className="absolute top-1 right-1 sm:top-2 sm:right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full flex items-center gap-1">
             <div className="h-3 w-3 sm:h-4 sm:w-4">{getMediaIcon(firstMediaItem.type)}</div>
             <span className="text-xs">{mediaCount}</span>
@@ -165,15 +171,107 @@ export function PostCard({
     return name.slice(0, 2).toUpperCase();
   };
 
+  const renderLLMClassificationInfo = (): JSX.Element | null => {
+    // Показываем информацию о LLM категоризации для обработанных постов
+    if (post.status !== 'processed' && post.status !== 'approved' && post.status !== 'scheduled' && post.status !== 'published') {
+      return null;
+    }
+
+    const hasClassification = post.llm_classification_confidence && post.target_channel;
+    if (!hasClassification) return null;
+
+    const confidence = post.llm_classification_confidence!; // Уже проверили выше
+    const targetChannel = post.target_channel;
+    
+    // Парсим результат классификации для получения reasoning
+    let reasoning = '';
+    try {
+      if (post.llm_classification_result) {
+        const result = typeof post.llm_classification_result === 'string' 
+          ? JSON.parse(post.llm_classification_result) 
+          : post.llm_classification_result;
+        reasoning = result.reasoning || '';
+      }
+    } catch (e) {
+      console.warn('Failed to parse llm_classification_result:', e);
+    }
+    
+    const getConfidenceColor = (conf: number) => {
+      if (conf >= 90) return 'text-green-600 dark:text-green-400';
+      if (conf >= 70) return 'text-yellow-600 dark:text-yellow-400';
+      return 'text-orange-600 dark:text-orange-400';
+    };
+
+    const getConfidenceBadgeColor = (conf: number) => {
+      if (conf >= 90) return 'bg-green-500/10 text-green-700 border-green-500/20 dark:text-green-400';
+      if (conf >= 70) return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20 dark:text-yellow-400';
+      return 'bg-orange-500/10 text-orange-700 border-orange-500/20 dark:text-orange-400';
+    };
+
+    return (
+      <div className="mb-2 p-2 bg-gradient-to-r from-blue-50/30 to-purple-50/30 dark:from-blue-950/10 dark:to-purple-950/10 rounded-md border border-blue-200/20 dark:border-blue-800/20">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <Brain className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 truncate">
+              ИИ
+            </span>
+            <Badge className={`${getConfidenceBadgeColor(confidence)} text-xs px-1 py-0`}>
+              {confidence}%
+            </Badge>
+          </div>
+          
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Target className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs text-muted-foreground truncate max-w-20">
+                  {targetChannel.channel_name || targetChannel.channel_username}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Целевой канал: {targetChannel.channel_name || targetChannel.channel_username}</p>
+                <p>Уверенность: {confidence}%</p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {targetChannel.auto_publish_enabled && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Zap className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Автопубликация включена</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </div>
+        {reasoning && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="mt-1 text-xs text-muted-foreground line-clamp-2 cursor-help">
+                {reasoning}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p className="text-sm">{reasoning}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+    );
+  };
+
   return (
     <TooltipProvider>
       <Card className="group hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 border-border/50 hover:border-primary/20 overflow-hidden">
         {renderMedia()}
         
-        <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6 pt-3 sm:pt-6">
+        <CardHeader className="pb-2 px-3 pt-3">
           <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-              <Avatar className="h-6 w-6 sm:h-8 sm:w-8 flex-shrink-0">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Avatar className="h-6 w-6 flex-shrink-0">
                 <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">
                   {getChannelInitials(post.source_channel)}
                 </AvatarFallback>
@@ -184,7 +282,7 @@ export function PostCard({
                 </Badge>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="text-xs text-muted-foreground mt-1 truncate max-w-16 sm:max-w-24">
+                    <span className="text-xs text-muted-foreground mt-0.5 truncate max-w-20">
                       #{post.id}
                     </span>
                   </TooltipTrigger>
@@ -197,8 +295,8 @@ export function PostCard({
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-8 sm:w-8 opacity-60 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-primary/10 flex-shrink-0">
-                  <MoreIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-60 group-hover:opacity-100 transition-all duration-200 hover:bg-primary/10 flex-shrink-0">
+                  <MoreIcon className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -210,6 +308,15 @@ export function PostCard({
                   <EditIcon className="h-4 w-4 mr-2" />
                   Редактировать
                 </DropdownMenuItem>
+                {post.llm_classification_result && (
+                  <>
+                    <Separator className="my-1" />
+                    <DropdownMenuItem onClick={() => onProcess(post)} className="text-purple-600 focus:text-purple-600">
+                      <Cpu className="h-4 w-4 mr-2" />
+                      Обработать пост
+                    </DropdownMenuItem>
+                  </>
+                )}
                 {post.status === 'processed' && (
                   <>
                     <Separator className="my-1" />
@@ -241,30 +348,33 @@ export function PostCard({
           </div>
         </CardHeader>
 
-        <CardContent className="pt-0 px-3 sm:px-6 pb-3 sm:pb-6">
+        <CardContent className="pt-0 px-3 pb-3">
+          {/* LLM Classification Info */}
+          {renderLLMClassificationInfo()}
+          
           {(post.processed_text || post.original_text) && (
-            <div className="mb-3 sm:mb-4">
-              <p className="text-xs sm:text-sm text-foreground/80 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+            <div className="mb-2">
+              <p className="text-xs text-foreground/80 line-clamp-2 leading-relaxed">
                 {post.processed_text || post.original_text}
               </p>
             </div>
           )}
 
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="h-3 w-3 flex-shrink-0" />
               <span className="truncate">Создан {formatDistanceToNow(new Date(post.created_at), { addSuffix: true, locale: ru })}</span>
             </div>
             
             {post.scheduled_at && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-purple-600 dark:text-purple-400">
+              <div className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400">
                 <CalendarIcon className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Запланирован на {format(new Date(post.scheduled_at), 'dd.MM.yyyy HH:mm', { locale: ru })}</span>
               </div>
             )}
             
             {post.published_at && (
-              <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-green-600 dark:text-green-400">
+              <div className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400">
                 <SendIcon className="h-3 w-3 flex-shrink-0" />
                 <span className="truncate">Опубликован {formatDistanceToNow(new Date(post.published_at), { addSuffix: true, locale: ru })}</span>
               </div>
@@ -273,7 +383,7 @@ export function PostCard({
             {post.source_channel && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <User className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate">{post.source_channel.channel_name || post.source_channel.channel_username}</span>
                   </div>
@@ -285,17 +395,17 @@ export function PostCard({
             )}
           </div>
 
-          <Separator className="my-3 sm:my-4" />
+          <Separator className="my-2" />
 
-          <div className="flex gap-1.5 sm:gap-2">
-            <Button variant="outline" size="sm" onClick={() => onView(post)} className="flex-1 hover:bg-primary/5 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
+          <div className="flex gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => onView(post)} className="flex-1 hover:bg-primary/5 text-xs px-2 h-7">
               <EyeIcon className="h-3 w-3 mr-1" />
               <span className="hidden sm:inline">Просмотр</span>
               <span className="sm:hidden">Вид</span>
             </Button>
             
             {(post.status === 'approved' || post.status === 'scheduled') && (
-              <Button size="sm" onClick={() => onPublish(post)} className="flex-1 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
+              <Button size="sm" onClick={() => onPublish(post)} className="flex-1 text-xs px-2 h-7">
                 <SendIcon className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Опубликовать</span>
                 <span className="sm:hidden">Опубл.</span>
@@ -303,7 +413,7 @@ export function PostCard({
             )}
             
             {post.status === 'processed' && (
-              <Button size="sm" onClick={() => onApprove(post)} className="flex-1 bg-green-600 hover:bg-green-700 text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9">
+              <Button size="sm" onClick={() => onApprove(post)} className="flex-1 bg-green-600 hover:bg-green-700 text-xs px-2 h-7">
                 <CheckIcon className="h-3 w-3 mr-1" />
                 <span className="hidden sm:inline">Одобрить</span>
                 <span className="sm:hidden">Одобр.</span>

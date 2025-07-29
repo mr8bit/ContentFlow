@@ -10,6 +10,7 @@ interface PostsGridProps {
   onReject: (post: Post) => void;
   onPublish: (post: Post) => void;
   onSchedule: (post: Post) => void;
+  onProcess: (post: Post) => void;
   onImageClick: (imageUrl: string) => void;
 }
 
@@ -21,6 +22,7 @@ export function PostsGrid({
   onReject,
   onPublish,
   onSchedule,
+  onProcess,
   onImageClick,
 }: PostsGridProps): JSX.Element {
   return (
@@ -43,6 +45,7 @@ export function PostsGrid({
             onReject={onReject}
             onPublish={onPublish}
             onSchedule={onSchedule}
+            onProcess={onProcess}
             onImageClick={onImageClick}
           />
         </div>

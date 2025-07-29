@@ -5,6 +5,7 @@ export interface PostDialogProps {
   post: Post | null;
   onClose: () => void;
   isFullPage?: boolean;
+  onProcess?: (post: Post) => void;
 }
 
 export type PostType = 'original' | 'processed' | 'improved';

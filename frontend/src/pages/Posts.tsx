@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from 'react-query';
 import { Post, TargetChannel } from '../types';
 import {
   PostsHeader,
-  PostsStats,
   PostsFilters,
   AdvancedPostsFilters,
   PostsGrid,
@@ -17,11 +17,13 @@ import {
   ScheduleDialog,
   Pagination
 } from '../components/posts';
-import { useFilteredPostsAPI, usePostsStats, usePostsCount, filterPostsByStatus, PostFilters } from '../hooks/useFilteredPostsAPI';
+import { useFilteredPostsAPI, usePostsCount, PostFilters } from '../hooks/useFilteredPostsAPI';
 import { usePostMutations } from '../hooks/usePostMutations';
 import { useTargetChannels } from '../hooks/useTargetChannels';
 import { useSourceChannels } from '../hooks/useSourceChannels';
 import { FilterParams } from '../components/posts/AdvancedPostsFilters';
+import { postsAPI } from '../services/api';
+import { useToast } from '../hooks/use-toast';
 
 // Types
 interface DialogState {
@@ -46,10 +48,63 @@ const STATUS_LABELS: Record<StatusFilter, string> = {
 
 export function Posts(): JSX.Element {
   const navigate = useNavigate();
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Helper functions for URL params
+  const getTabFromUrl = useCallback((): number => {
+    const status = searchParams.get('status');
+    if (status) {
+      const index = STATUS_FILTERS.indexOf(status as StatusFilter);
+      return index >= 0 ? index : 0;
+    }
+    return 0;
+  }, [searchParams]);
+
+  const getPageFromUrl = useCallback((): number => {
+    const page = searchParams.get('page');
+    return page ? parseInt(page, 10) : 1;
+  }, [searchParams]);
+
+  const getAdvancedFiltersFromUrl = useCallback((): FilterParams => {
+    const filters: FilterParams = {};
+    
+    const sourceChannelId = searchParams.get('source_channel_id');
+    if (sourceChannelId) filters.source_channel_id = parseInt(sourceChannelId, 10);
+    
+    const targetChannelId = searchParams.get('target_channel_id');
+    if (targetChannelId) filters.target_channel_id = parseInt(targetChannelId, 10);
+    
+    const dateFrom = searchParams.get('date_from');
+    if (dateFrom) filters.date_from = dateFrom;
+    
+    const dateTo = searchParams.get('date_to');
+    if (dateTo) filters.date_to = dateTo;
+    
+    const isManual = searchParams.get('is_manual');
+    if (isManual !== null) filters.is_manual = isManual === 'true';
+    
+    return filters;
+  }, [searchParams]);
+
+  const updateUrlParams = useCallback((updates: Record<string, string | number | boolean | null>) => {
+    const newParams = new URLSearchParams(searchParams);
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === '') {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, String(value));
+      }
+    });
+    
+    setSearchParams(newParams);
+  }, [searchParams, setSearchParams]);
+
+  // Initialize state from URL
+  const [selectedTab, setSelectedTab] = useState(getTabFromUrl());
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
-  const [advancedFilters, setAdvancedFilters] = useState<FilterParams>({});
-  const [currentPage, setCurrentPage] = useState(1);
+  const [advancedFilters, setAdvancedFilters] = useState<FilterParams>(getAdvancedFiltersFromUrl());
+  const [currentPage, setCurrentPage] = useState(getPageFromUrl());
   const [pageSize] = useState(20); // Posts per page
   const [dialogs, setDialogs] = useState<DialogState>({
     view: null,
@@ -57,6 +112,13 @@ export function Posts(): JSX.Element {
     approve: null,
     schedule: null
   });
+
+  // Sync state with URL on mount and URL changes
+  useEffect(() => {
+    setSelectedTab(getTabFromUrl());
+    setCurrentPage(getPageFromUrl());
+    setAdvancedFilters(getAdvancedFiltersFromUrl());
+  }, [getTabFromUrl, getPageFromUrl, getAdvancedFiltersFromUrl]);
 
   // Helper function to get status from tab
   const getStatusFromTab = (tabIndex: number): StatusFilter => {
@@ -135,16 +197,74 @@ export function Posts(): JSX.Element {
   const { data: targetChannels, error: channelsError, isLoading: channelsLoading } = useTargetChannels();
   const { data: sourceChannels, error: sourceChannelsError, isLoading: sourceChannelsLoading } = useSourceChannels();
   const mutations = usePostMutations();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Process post mutation
+  const processPostMutation = useMutation(
+    (post: Post) => postsAPI.process(post.id),
+    {
+      onMutate: (post: Post) => {
+        toast({
+          title: "Обработка поста",
+          description: `Начинаем обработку поста #${post.id}...`,
+        });
+      },
+      onSuccess: (data, post: Post) => {
+        toast({
+          title: "Пост обработан",
+          description: `Пост #${post.id} успешно обработан с помощью ИИ.`,
+        });
+        queryClient.invalidateQueries(['posts']);
+        queryClient.invalidateQueries(['post', post.id]);
+      },
+      onError: (error: any, post: Post) => {
+        toast({
+          title: "Ошибка обработки",
+          description: `Не удалось обработать пост #${post.id}: ${error.message || 'Неизвестная ошибка'}`,
+          variant: "destructive",
+        });
+      },
+    }
+  );
 
   // Computed values
-  const stats = usePostsStats(posts as Post[] | undefined);
   const totalPages = Math.ceil((totalCount || 0) / pageSize);
 
   // Event handlers
   const handleTabChange = useCallback((tabIndex: number) => {
-    setSelectedTab(tabIndex);
-    setCurrentPage(1); // Reset to first page when tab changes
-  }, []);
+    const newStatus = STATUS_FILTERS[tabIndex];
+    updateUrlParams({
+      status: newStatus === 'all' ? null : newStatus,
+      page: null // Reset page when changing tabs
+    });
+  }, [updateUrlParams]);
+
+  const handlePageChange = useCallback((page: number) => {
+    updateUrlParams({ page: page === 1 ? null : page });
+  }, [updateUrlParams]);
+
+  const handleAdvancedFiltersChange = useCallback((filters: FilterParams) => {
+    updateUrlParams({
+      source_channel_id: filters.source_channel_id || null,
+      target_channel_id: filters.target_channel_id || null,
+      date_from: filters.date_from || null,
+      date_to: filters.date_to || null,
+      is_manual: filters.is_manual !== undefined ? filters.is_manual : null,
+      page: null // Reset page when changing filters
+    });
+  }, [updateUrlParams]);
+
+  const handleClearAdvancedFilters = useCallback(() => {
+    updateUrlParams({
+      source_channel_id: null,
+      target_channel_id: null,
+      date_from: null,
+      date_to: null,
+      is_manual: null,
+      page: null
+    });
+  }, [updateUrlParams]);
 
   const handleViewPost = useCallback((post: Post) => {
     navigate(`/posts/${post.id}`);
@@ -175,6 +295,10 @@ export function Posts(): JSX.Element {
     mutations.publishPost.mutate({ id: post.id, data: { target_channel_id: channels[0].id } });
   }, [mutations.publishPost, targetChannels]);
 
+  const handleProcessPost = useCallback((post: Post) => {
+    processPostMutation.mutate(post);
+  }, [processPostMutation]);
+
   const handleImageClick = useCallback((imageUrl: string) => {
     setFullscreenImage(imageUrl);
   }, []);
@@ -187,28 +311,32 @@ export function Posts(): JSX.Element {
     setFullscreenImage(null);
   }, []);
 
-  const handleAdvancedFiltersChange = useCallback((filters: FilterParams) => {
-    setAdvancedFilters(filters);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, []);
-
-  const handleClearAdvancedFilters = useCallback(() => {
-    setAdvancedFilters({});
-  }, []);
-
-
-
-
-
-
-
-
+  const handleRefresh = useCallback(async () => {
+    toast({
+      title: "Обновление постов",
+      description: "Загружаем актуальные данные...",
+    });
+    
+    try {
+      await refetchPosts();
+      toast({
+        title: "Посты обновлены",
+        description: "Данные успешно загружены",
+      });
+    } catch (error) {
+      toast({
+        title: "Ошибка обновления",
+        description: "Не удалось загрузить данные",
+        variant: "destructive",
+      });
+    }
+  }, [refetchPosts, toast]);
 
   // Loading state
   if (postsLoading || countLoading || channelsLoading || sourceChannelsLoading) {
     return (
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
-        <PostsHeader onRefresh={refetchPosts} />
+        <PostsHeader onRefresh={handleRefresh} />
         <LoadingSkeleton />
       </div>
     );
@@ -226,7 +354,7 @@ export function Posts(): JSX.Element {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
-        <PostsHeader onRefresh={refetchPosts} />
+        <PostsHeader onRefresh={handleRefresh} />
         
 
         <div className="animate-in fade-in-50 duration-700">
@@ -236,6 +364,7 @@ export function Posts(): JSX.Element {
             selectedTab={selectedTab}
             posts={posts as Post[] | undefined}
             onTabChange={handleTabChange}
+            advancedFilters={advancedFilters}
           />
         </div>
 
@@ -273,6 +402,7 @@ export function Posts(): JSX.Element {
                 onReject={handleRejectPost}
                 onPublish={handlePublishPost}
                 onSchedule={handleSchedulePost}
+                onProcess={handleProcessPost}
                 onImageClick={handleImageClick}
               />
 
@@ -280,7 +410,7 @@ export function Posts(): JSX.Element {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  onPageChange={setCurrentPage}
+                  onPageChange={handlePageChange}
                   itemsPerPage={pageSize}
                   totalItems={totalCount || 0}
                 />
@@ -294,6 +424,7 @@ export function Posts(): JSX.Element {
       <PostDialog
         post={dialogs.view}
         onClose={() => closeDialog('view')}
+        onProcess={handleProcessPost}
       />
 
       <EditDialog
